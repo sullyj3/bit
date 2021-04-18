@@ -54,7 +54,6 @@ setEditorMode mode state = state {stateMode = mode}
 askVty :: App Vty
 askVty = ask
 
-
 ----------
 -- Main --
 ----------
@@ -67,17 +66,13 @@ main = do
     _ <- runRWST loop vty initialState
     shutdown vty
     putStrLn "bye!"
-
+  where
+    loop :: App ()
+    loop = view >> handleEvent >>= \case
+      Continue -> loop
+      Quit     -> pure ()
 
 type App a = RWST Vty () AppState IO a
-
-loop :: App ()
-loop = do
-  view
-  shouldContinue <- handleEvent
-  case shouldContinue of
-    Continue -> loop
-    Quit     -> pure ()
 
 ----------
 -- View --
