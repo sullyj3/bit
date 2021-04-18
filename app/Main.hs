@@ -14,6 +14,7 @@ import qualified Data.Sequence as Seq
 import           Data.Sequence (Seq)
 --import Data.Text
 import Flow
+import Control.Exception (bracket)
 
 -----------
 -- State --
@@ -59,18 +60,19 @@ askVty = ask
 ----------
 
 main = do
-    cfg <- standardIOConfig
-    vty <- mkVty cfg
-
+  cfg <- standardIOConfig
+  withVty cfg \vty -> do
     initialState <- mkInitialState vty
     _ <- runRWST loop vty initialState
-    shutdown vty
     putStrLn "bye!"
   where
     loop :: App ()
     loop = view >> handleEvent >>= \case
       Continue -> loop
       Quit     -> pure ()
+
+    withVty :: Config -> (Vty -> IO c) -> IO c
+    withVty cfg = bracket (mkVty cfg) shutdown
 
 type App a = RWST Vty () AppState IO a
 
@@ -123,8 +125,8 @@ viewDiagnostics :: AppState -> Image
 viewDiagnostics AppState {..} =
   string (defAttr `withForeColor` white `withBackColor` blue) eventStr
   where
-    eventStr = 
-      maybe "no events yet" 
+    eventStr =
+      maybe "no events yet"
             (\e -> "Last event: " ++ show e)
             stateLastEvent
 
