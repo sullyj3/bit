@@ -56,7 +56,7 @@ getState :: App AppState
 getState = get
 
 getMode :: App EditorMode
-getMode = getState <&> _stateMode
+getMode = getState <&> (^. stateMode)
 
 setEditorMode :: EditorMode -> AppState -> AppState
 setEditorMode mode state = state {_stateMode = mode}
