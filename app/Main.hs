@@ -44,7 +44,7 @@ type App a = RWST Vty () AppState IO a
 
 view :: App ()
 view = do
-  vty <- ask
+  vty <- askVty
   s <- get
   liftIO $ Vty.update vty (viewAppState s)
 
@@ -96,36 +96,63 @@ diagnostics AppState {..} =
 loop :: App ()
 loop = do
   view
-  shouldExit <- handleEvent
-  if not shouldExit
+  shouldContinue <- handleEvent
+  if shouldContinue
     then loop
     else pure ()
 
+getState :: App AppState
+getState = get
 
--- return whether we should exit
+getMode :: App EditorMode
+getMode = getState <&> stateMode
+
+setEditorMode :: EditorMode -> AppState -> AppState
+setEditorMode mode state = state {stateMode = mode}
+
+askVty :: App Vty
+askVty = ask
+
+-- return whether we should continue
 handleEvent :: App Bool
 handleEvent = do
-  vty <- ask
+  vty <- askVty
   e <- liftIO $ nextEvent vty
   modify (\s -> s {stateLastEvent = Just e})
   case e of
 
     EvKey (KChar c) [] -> case c of
-      'Q' -> pure True
+      'Q' -> pure False
       'o' -> do
         buf <- liftIO $ openFile "app/Main.hs"
-        pure False
+        pure True
 
-      'h' -> pure False
-      'j' -> pure False
-      'k' -> pure False
-      'l' -> pure False
-      _   -> pure False
+      'h' -> pure True
+      'j' -> pure True
+      'k' -> pure True
+      'l' -> pure True
+
+      'i' -> do
+        -- insert mode
+        getMode >>= \case
+          InsertMode -> pure True -- todo handle input
+          NormalMode -> do
+            modify (setEditorMode InsertMode)
+            pure True
+      _   -> pure True
+    EvKey KEsc [] -> do
+      -- normal mode
+      getMode >>= \case
+        NormalMode -> pure True
+        InsertMode -> do
+          modify (setEditorMode NormalMode)
+          pure True
+
 
     EvResize w h -> do
       modify (\s -> s { stateDimensions = (w,h) })
-      pure False
-    _ -> pure False
+      pure True
+    _ -> pure True
 
 
 data EditorMode = NormalMode | InsertMode
