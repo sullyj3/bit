@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -14,14 +15,24 @@ import           Data.Sequence (Seq)
 --import Data.Text
 import Flow
 
-main = do
-    cfg <- standardIOConfig
-    vty <- mkVty cfg
+-----------
+-- State --
+-----------
 
-    initialState <- mkInitialState vty
-    _ <- runRWST loop vty initialState
-    shutdown vty
-    putStrLn "bye!"
+data AppState = AppState
+  { stateDimensions :: (Int, Int)
+  , stateLastEvent :: Maybe Event
+  , stateWindow :: Window
+  , stateMode :: EditorMode
+  }
+
+data EditorMode = NormalMode | InsertMode
+
+newtype Buffer = Buffer { bufferLines :: Seq Text }
+
+data Window =
+    EmptyWindow
+  | BufferWindow { windowBuffer :: Buffer, winTopLine :: Int }
 
 mkInitialState :: Vty -> IO AppState
 mkInitialState vty = do
@@ -31,16 +42,46 @@ mkInitialState vty = do
 initialAppState :: (Int, Int) -> AppState
 initialAppState bounds = AppState bounds Nothing EmptyWindow NormalMode
 
-data AppState = AppState
-  { stateDimensions :: (Int, Int)
-  , stateLastEvent :: Maybe Event
-  , stateWindow :: Window
-  , stateMode :: EditorMode
-  }
+getState :: App AppState
+getState = get
+
+getMode :: App EditorMode
+getMode = getState <&> stateMode
+
+setEditorMode :: EditorMode -> AppState -> AppState
+setEditorMode mode state = state {stateMode = mode}
+
+askVty :: App Vty
+askVty = ask
+
+
+----------
+-- Main --
+----------
+
+main = do
+    cfg <- standardIOConfig
+    vty <- mkVty cfg
+
+    initialState <- mkInitialState vty
+    _ <- runRWST loop vty initialState
+    shutdown vty
+    putStrLn "bye!"
 
 
 type App a = RWST Vty () AppState IO a
 
+loop :: App ()
+loop = do
+  view
+  shouldContinue <- handleEvent
+  case shouldContinue of
+    Continue -> loop
+    Quit     -> pure ()
+
+----------
+-- View --
+----------
 
 view :: App ()
 view = do
@@ -75,7 +116,7 @@ statusBar state@AppState {..} showDiagnostics = translate 0 (h-1) $ horizCat
 
     modeWidget = string modeAttr $ " " <> showMode stateMode <> " "
     middlePadding = string barBgAttr $ replicate (remainingSpace - 1) ' '
-    diagnosticsWidget | showDiagnostics = diagnostics state
+    diagnosticsWidget | showDiagnostics = viewDiagnostics state
                       | otherwise       = mempty
     rightPadding = char barBgAttr ' '
 
@@ -83,8 +124,8 @@ statusBar state@AppState {..} showDiagnostics = translate 0 (h-1) $ horizCat
     -- space either side
     modeWidth = 8
 
-diagnostics :: AppState -> Image
-diagnostics AppState {..} =
+viewDiagnostics :: AppState -> Image
+viewDiagnostics AppState {..} =
   string (defAttr `withForeColor` white `withBackColor` blue) eventStr
   where
     eventStr = 
@@ -92,76 +133,77 @@ diagnostics AppState {..} =
             (\e -> "Last event: " ++ show e)
             stateLastEvent
 
+------------
+-- Events --
+------------
 
-loop :: App ()
-loop = do
-  view
-  shouldContinue <- handleEvent
-  if shouldContinue
-    then loop
-    else pure ()
+data NormalModeCmd = CmdEnterInsertMode
+                   | CmdQuit
+                   | CmdOpenFile FilePath
 
-getState :: App AppState
-getState = get
 
-getMode :: App EditorMode
-getMode = getState <&> stateMode
+data InsertModeCmd = CmdEnterNormalMode
+                   | CmdInsertChar Char
 
-setEditorMode :: EditorMode -> AppState -> AppState
-setEditorMode mode state = state {stateMode = mode}
+handleNormalModeCmd :: NormalModeCmd -> App ShouldQuit
+handleNormalModeCmd = \case
+  CmdEnterInsertMode -> do
+    getMode >>= \case
+      InsertMode -> pure Continue -- todo handle input
+      NormalMode -> do
+        modify (setEditorMode InsertMode)
+        pure Continue
+  CmdQuit -> pure Quit
+  CmdOpenFile fp -> do
+    -- todo store buf in state
+    --"app/Main.hs"
+    buf <- liftIO $ openFile fp
+    pure Continue
 
-askVty :: App Vty
-askVty = ask
+handleInsertModeCmd :: InsertModeCmd -> App ShouldQuit
+handleInsertModeCmd = \case
+  CmdEnterNormalMode -> do
+    getMode >>= \case
+      NormalMode -> pure Continue
+      InsertMode -> do
+        modify (setEditorMode NormalMode)
+        pure Continue
+
+  CmdInsertChar c -> do
+    -- todo
+    pure Continue
+
+data ShouldQuit = Quit | Continue
+  deriving (Show)
 
 -- return whether we should continue
-handleEvent :: App Bool
+handleEvent :: App ShouldQuit
 handleEvent = do
   vty <- askVty
   e <- liftIO $ nextEvent vty
   modify (\s -> s {stateLastEvent = Just e})
+
   case e of
-
-    EvKey (KChar c) [] -> case c of
-      'Q' -> pure False
-      'o' -> do
-        buf <- liftIO $ openFile "app/Main.hs"
-        pure True
-
-      'h' -> pure True
-      'j' -> pure True
-      'k' -> pure True
-      'l' -> pure True
-
-      'i' -> do
-        -- insert mode
-        getMode >>= \case
-          InsertMode -> pure True -- todo handle input
-          NormalMode -> do
-            modify (setEditorMode InsertMode)
-            pure True
-      _   -> pure True
-    EvKey KEsc [] -> do
-      -- normal mode
-      getMode >>= \case
-        NormalMode -> pure True
-        InsertMode -> do
-          modify (setEditorMode NormalMode)
-          pure True
-
-
     EvResize w h -> do
       modify (\s -> s { stateDimensions = (w,h) })
-      pure True
-    _ -> pure True
+      pure Continue
+    _ ->
+      getMode >>= \case
+        NormalMode -> maybe (pure Continue) handleNormalModeCmd case e of
+          EvKey (KChar c) [] -> case c of
+            'Q' -> Just CmdQuit
+            'i' -> Just CmdEnterInsertMode
 
+            'h' -> Nothing
+            'j' -> Nothing
+            'k' -> Nothing
+            'l' -> Nothing
+            _ -> Nothing
 
-data EditorMode = NormalMode | InsertMode
+        InsertMode -> maybe (pure Continue) handleInsertModeCmd case e of
+          EvKey KEsc [] -> Just CmdEnterNormalMode
+          _ -> Nothing
 
-newtype Buffer = Buffer { bufferLines :: Seq Text }
 
 openFile :: FilePath -> IO Buffer
 openFile path = Buffer . Seq.fromList . lines <$> readFileText path
-
-data Window =
-    EmptyWindow
-  | BufferWindow { windowBuffer :: Buffer, winTopLine :: Int }
