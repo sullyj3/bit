@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 import Relude
@@ -16,26 +17,32 @@ import qualified Data.Sequence as Seq
 import           Data.Sequence (Seq)
 --import Data.Text
 import Flow
+import Lens.Micro
+import Lens.Micro.TH
 import Control.Exception (bracket)
 
 -----------
 -- State --
 -----------
 
-data AppState = AppState
-  { stateDimensions :: (Int, Int)
-  , stateLastEvent :: Maybe Event
-  , stateWindow :: Window
-  , stateMode :: EditorMode
-  }
-
-data EditorMode = NormalMode | InsertMode
-
 newtype Buffer = Buffer { bufferLines :: Seq Text }
 
 data Window =
     EmptyWindow
   | BufferWindow { windowBuffer :: Buffer, winTopLine :: Int }
+
+data EditorMode = NormalMode | InsertMode
+
+data AppState = AppState
+  { _stateDimensions :: (Int, Int)
+  , _stateLastEvent :: Maybe Event
+  , _stateWindow :: Window
+  , _stateMode :: EditorMode
+  }
+
+makeLenses ''AppState
+
+
 
 mkInitialState :: Vty -> IO AppState
 mkInitialState vty = do
@@ -49,10 +56,10 @@ getState :: App AppState
 getState = get
 
 getMode :: App EditorMode
-getMode = getState <&> stateMode
+getMode = getState <&> _stateMode
 
 setEditorMode :: EditorMode -> AppState -> AppState
-setEditorMode mode state = state {stateMode = mode}
+setEditorMode mode state = state {_stateMode = mode}
 
 askVty :: App Vty
 askVty = ask
@@ -89,9 +96,9 @@ view = do
   liftIO $ Vty.update vty (viewAppState s)
 
 viewAppState :: AppState -> Picture
-viewAppState state@AppState {..} = let
+viewAppState state = let
 -- todo store mode in state
-  (w,h) = stateDimensions
+  (w,h) = state ^. stateDimensions
   bar = statusBar state True
   howToQuit = string defAttr "press Q to exit"
 
@@ -99,10 +106,10 @@ viewAppState state@AppState {..} = let
     in pic
 
 statusBar :: AppState -> Bool -> Image
-statusBar state@AppState {..} showDiagnostics = translate 0 (h-1) $ horizCat
+statusBar state showDiagnostics = translate 0 (h-1) $ horizCat
   [ modeWidget, middlePadding, diagnosticsWidget, rightPadding ]
   where
-    (w,h) = stateDimensions
+    (w,h) = state ^. stateDimensions
     barBgAttr = defAttr `withBackColor` blue
     modeAttr = defAttr `withBackColor` white `withForeColor` blue
 
@@ -113,7 +120,7 @@ statusBar state@AppState {..} showDiagnostics = translate 0 (h-1) $ horizCat
 
     remainingSpace = w - imageWidth modeWidget - imageWidth diagnosticsWidget
 
-    modeWidget = string modeAttr $ " " <> showMode stateMode <> " "
+    modeWidget = string modeAttr $ " " <> showMode (state ^. stateMode) <> " "
     middlePadding = string barBgAttr $ replicate (remainingSpace - 1) ' '
     diagnosticsWidget | showDiagnostics = viewDiagnostics state
                       | otherwise       = mempty
@@ -124,13 +131,13 @@ statusBar state@AppState {..} showDiagnostics = translate 0 (h-1) $ horizCat
     modeWidth = 8
 
 viewDiagnostics :: AppState -> Image
-viewDiagnostics AppState {..} =
+viewDiagnostics state =
   string (defAttr `withForeColor` white `withBackColor` blue) eventStr
   where
     eventStr =
       maybe "no events yet"
             (\e -> "Last event: " ++ show e)
-            stateLastEvent
+            (state ^. stateLastEvent)
 
 ------------
 -- Events --
@@ -174,16 +181,17 @@ data ShouldQuit = Quit | Continue
 handleEvent :: App ShouldQuit
 handleEvent = do
   vty <- askVty
-  e <- liftIO $ nextEvent vty
-  modify (\s -> s {stateLastEvent = Just e})
 
-  case e of
+  ev <- liftIO $ nextEvent vty
+  modify (stateLastEvent ?~ ev)
+
+  case ev of
     EvResize w h -> do
-      modify (\s -> s { stateDimensions = (w,h) })
+      modify (stateDimensions .~ (w,h))
       pure Continue
     _ ->
       getMode >>= \case
-        NormalMode -> maybe (pure Continue) handleNormalModeCmd case e of
+        NormalMode -> maybe (pure Continue) handleNormalModeCmd case ev of
           EvKey (KChar c) [] -> case c of
             'Q' -> Just CmdQuit
             'i' -> Just CmdEnterInsertMode
@@ -202,7 +210,7 @@ handleEvent = do
           -- ignore all other events
           _ -> Nothing
 
-        InsertMode -> maybe (pure Continue) handleInsertModeCmd case e of
+        InsertMode -> maybe (pure Continue) handleInsertModeCmd case ev of
           EvKey KEsc [] -> Just CmdEnterNormalMode
           _ -> Nothing
 

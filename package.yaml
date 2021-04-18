@@ -22,6 +22,8 @@ description:         Please see the README on GitHub at <https://github.com/sull
 dependencies:
 - relude
 - base >= 4.7 && < 5
+- microlens
+- microlens-th
 - containers
 - text
 - vty
