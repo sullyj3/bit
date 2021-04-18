@@ -154,7 +154,6 @@ handleNormalModeCmd = \case
   CmdQuit -> pure Quit
   CmdOpenFile fp -> do
     -- todo store buf in state
-    --"app/Main.hs"
     -- buf <- liftIO $ openFile fp
     pure Continue
 
@@ -188,12 +187,20 @@ handleEvent = do
           EvKey (KChar c) [] -> case c of
             'Q' -> Just CmdQuit
             'i' -> Just CmdEnterInsertMode
+            'o' -> Just $ CmdOpenFile "app/Main.hs"
 
+            -- todo: cursor movement
             'h' -> Nothing
             'j' -> Nothing
             'k' -> Nothing
             'l' -> Nothing
+
+            -- ignore all other chars
             _ -> Nothing
+          -- ignore all other keys
+          EvKey _ _ -> Nothing
+          -- ignore all other events
+          _ -> Nothing
 
         InsertMode -> maybe (pure Continue) handleInsertModeCmd case e of
           EvKey KEsc [] -> Just CmdEnterNormalMode
