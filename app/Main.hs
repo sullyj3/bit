@@ -15,12 +15,12 @@ import Control.Monad.RWS.Strict
 import Control.Monad.State.Class
 import qualified Data.Sequence as Seq
 import           Data.Sequence (Seq)
---import Data.Text
-import Flow
+
 import Lens.Micro
 import Lens.Micro.TH
 import Control.Exception (bracket)
 
+import Flow
 -----------
 -- State --
 -----------
