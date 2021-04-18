@@ -4,6 +4,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 import Relude
 
 import qualified Graphics.Vty as Vty
@@ -134,37 +136,33 @@ viewDiagnostics AppState {..} =
 -- Events --
 ------------
 
-data NormalModeCmd = CmdEnterInsertMode
-                   | CmdQuit
-                   | CmdOpenFile FilePath
+data CmdType = NormalModeCmd | InsertModeCmd | AnyModeCmd
 
+data Command a where
+  CmdEnterInsertMode :: Command NormalModeCmd
+  CmdQuit            :: Command NormalModeCmd
+  CmdOpenFile        :: FilePath -> Command NormalModeCmd
 
-data InsertModeCmd = CmdEnterNormalMode
-                   | CmdInsertChar Char
+  CmdEnterNormalMode :: Command InsertModeCmd
+  CmdInsertChar      :: Char -> Command InsertModeCmd
 
-handleNormalModeCmd :: NormalModeCmd -> App ShouldQuit
+handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
   CmdEnterInsertMode -> do
-    getMode >>= \case
-      InsertMode -> pure Continue -- todo handle input
-      NormalMode -> do
-        modify (setEditorMode InsertMode)
-        pure Continue
+    modify (setEditorMode InsertMode)
+    pure Continue
   CmdQuit -> pure Quit
   CmdOpenFile fp -> do
     -- todo store buf in state
     --"app/Main.hs"
-    buf <- liftIO $ openFile fp
+    -- buf <- liftIO $ openFile fp
     pure Continue
 
-handleInsertModeCmd :: InsertModeCmd -> App ShouldQuit
+handleInsertModeCmd :: Command InsertModeCmd -> App ShouldQuit
 handleInsertModeCmd = \case
   CmdEnterNormalMode -> do
-    getMode >>= \case
-      NormalMode -> pure Continue
-      InsertMode -> do
-        modify (setEditorMode NormalMode)
-        pure Continue
+    modify (setEditorMode NormalMode)
+    pure Continue
 
   CmdInsertChar c -> do
     -- todo
