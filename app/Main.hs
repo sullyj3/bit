@@ -27,12 +27,22 @@ import Flow
 
 newtype Buffer = Buffer { bufferLines :: Seq Text }
 
+bufferLineCount (Buffer bLines) = Seq.length bLines
+
 data Window =
     EmptyWindow
   | BufferWindow { windowBuffer :: Buffer, winTopLine :: Int }
 
 windowFromBuf :: Buffer -> Window
 windowFromBuf b = BufferWindow b 0
+
+scrollWindow :: Int -> Window -> Window
+scrollWindow _ EmptyWindow = EmptyWindow
+scrollWindow n (BufferWindow buf winTopLine) =
+  let newTopLine = clamp 0 (winTopLine + n) (bufferLineCount buf)
+   in BufferWindow buf newTopLine
+
+clamp a x b = max a (min x b)
 
 data EditorMode = NormalMode | InsertMode
 
@@ -159,6 +169,7 @@ viewDiagnostics state =
 data CmdType = NormalModeCmd | InsertModeCmd | AnyModeCmd
 
 data Command a where
+  CmdScroll          :: Int -> Command NormalModeCmd
   CmdEnterInsertMode :: Command NormalModeCmd
   CmdQuit            :: Command NormalModeCmd
   CmdOpenFile        :: FilePath -> Command NormalModeCmd
@@ -168,6 +179,9 @@ data Command a where
 
 handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
+  CmdScroll n -> do
+    modify (stateWindow %~ scrollWindow n)
+    pure Continue
   CmdEnterInsertMode -> do
     modify (setEditorMode InsertMode)
     pure Continue
@@ -218,6 +232,9 @@ handleEvent = do
             'j' -> Nothing
             'k' -> Nothing
             'l' -> Nothing
+
+            'm' -> Just $ CmdScroll 1
+            ',' -> Just $ CmdScroll (-1)
 
             -- ignore all other chars
             _ -> Nothing
