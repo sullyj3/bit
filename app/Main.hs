@@ -31,6 +31,9 @@ data Window =
     EmptyWindow
   | BufferWindow { windowBuffer :: Buffer, winTopLine :: Int }
 
+windowFromBuf :: Buffer -> Window
+windowFromBuf b = BufferWindow b 0
+
 data EditorMode = NormalMode | InsertMode
 
 data AppState = AppState
@@ -102,7 +105,17 @@ viewAppState state = let
   bar = statusBar state True
   howToQuit = string defAttr "press Q to exit"
 
-  pic = picForLayers [bar, howToQuit]
+  mainWindow = case state ^. stateWindow of
+    EmptyWindow -> howToQuit
+    BufferWindow (Buffer bufLines) topLineNumber -> let
+      linesToDisplay = Seq.take (h-1) $ Seq.drop topLineNumber bufLines
+
+      showLine :: Text -> Image
+      showLine = text' defAttr
+
+      in vertCat $ toList $ showLine <$> linesToDisplay
+
+  pic = picForLayers [bar, mainWindow]
     in pic
 
 statusBar :: AppState -> Bool -> Image
@@ -161,8 +174,11 @@ handleNormalModeCmd = \case
   CmdQuit -> pure Quit
   CmdOpenFile fp -> do
     -- todo store buf in state
-    -- buf <- liftIO $ openFile fp
+    buf <- liftIO $ openFile fp
+    let window = windowFromBuf buf
+    modify (stateWindow .~ window)
     pure Continue
+
 
 handleInsertModeCmd :: Command InsertModeCmd -> App ShouldQuit
 handleInsertModeCmd = \case
