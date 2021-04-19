@@ -1,5 +1,5 @@
 # todo
-[  ] open and display files
+[  ] open and display files passed on command line
 [  ] insert mode and barebones editing
 [  ] line numbers
 [  ] some indication of the end of the buffer

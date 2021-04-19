@@ -21,6 +21,7 @@ import Lens.Micro.TH
 import Control.Exception (bracket)
 
 import Flow
+import System.Environment (getArgs)
 -----------
 -- State --
 -----------
@@ -55,15 +56,14 @@ data AppState = AppState
 
 makeLenses ''AppState
 
+windowFromMaybe :: Maybe FilePath -> IO Window
+windowFromMaybe = maybe (pure EmptyWindow) (\fp -> openFile fp <&> windowFromBuf)
 
-
-mkInitialState :: Vty -> IO AppState
-mkInitialState vty = do
+mkInitialState :: Vty -> AppArgs -> IO AppState
+mkInitialState vty (AppArgs argsFileToOpen) = do
   bounds <- liftIO $ displayBounds $ outputIface vty
-  pure $ initialAppState bounds
-
-initialAppState :: (Int, Int) -> AppState
-initialAppState bounds = AppState bounds Nothing EmptyWindow NormalMode
+  initialWindow <- windowFromMaybe argsFileToOpen
+  pure $ AppState bounds Nothing initialWindow NormalMode
 
 getState :: App AppState
 getState = get
@@ -81,10 +81,22 @@ askVty = ask
 -- Main --
 ----------
 
+newtype AppArgs = AppArgs { argsFileToOpen :: Maybe FilePath }
+
+parseArgs :: [String] -> Maybe AppArgs
+parseArgs args = case args of
+  [] -> Just (AppArgs Nothing)
+  [fp] -> Just . AppArgs . Just $ fp
+  _ -> Nothing
+
+
 main = do
+
+  args <- getArgs >>= parseArgs .> maybe (die "invalid args") pure
+
   cfg <- standardIOConfig
   withVty cfg \vty -> do
-    initialState <- mkInitialState vty
+    initialState <- mkInitialState vty args
     _ <- runRWST loop vty initialState
     putStrLn "bye!"
   where
@@ -149,7 +161,7 @@ statusBar state showDiagnostics = translate 0 (h-1) $ horizCat
                       | otherwise       = mempty
     rightPadding = char barBgAttr ' '
 
-    -- hardcoded for now - the length of the words NORMAL and INSERT plus 1 
+    -- hardcoded for now - the length of the words NORMAL and INSERT plus 1
     -- space either side
     modeWidth = 8
 
