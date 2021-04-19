@@ -43,12 +43,15 @@ data Window =
 windowFromBuf :: Rect -> Buffer -> Window
 windowFromBuf r b = BufferWindow b 0 (0,0) r
 
-moveCursor :: (Int, Int) -> Window -> Int -> (Int, Int)
-moveCursor (dx,dy) BufferWindow{ .. } winHeight = let
+moveCursor :: (Int, Int) -> Window -> Window
+moveCursor (dx,dy) BufferWindow{ .. } = let
+  Rect _ (_, winHeight) = winRect
   (x, y) = winCursorLocation
   currentLine :: Text
-  currentLine = bufferLines windowBuffer `Seq.index` (winTopLine + y)
-  in (clamp 0 (x+dx) (T.length currentLine), clamp 0 (y+dy) winHeight)
+  currentLine = bufferLines windowBuffer `Seq.index` (winTopLine + y + dy)
+  newCursorLocation = (clamp 0 (x+dx) (T.length currentLine-1), clamp 0 (y+dy) winHeight)
+  in BufferWindow windowBuffer winTopLine newCursorLocation winRect
+moveCursor _ w@(EmptyWindow _) = w
 
 scrollWindow :: Int -> Window -> Window
 scrollWindow _ (EmptyWindow r) = EmptyWindow r
@@ -218,6 +221,7 @@ data Command a where
   CmdEnterInsertMode :: Command NormalModeCmd
   CmdQuit            :: Command NormalModeCmd
   CmdOpenFile        :: FilePath -> Command NormalModeCmd
+  CmdMoveCursorRelative :: (Int, Int) -> Command NormalModeCmd
 
   CmdEnterNormalMode :: Command InsertModeCmd
   CmdInsertChar      :: Char -> Command InsertModeCmd
@@ -225,6 +229,9 @@ data Command a where
 
 handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
+  CmdMoveCursorRelative v -> do
+    modify (stateWindow %~ moveCursor v)
+    pure Continue
   CmdScroll n -> do
     modify (stateWindow %~ scrollWindow n)
     pure Continue
@@ -277,10 +284,10 @@ handleEvent = do
             'o' -> Just $ CmdOpenFile "app/Main.hs"
 
             -- todo: cursor movement
-            'h' -> Nothing
-            'j' -> Nothing
-            'k' -> Nothing
-            'l' -> Nothing
+            'h' -> Just $ CmdMoveCursorRelative (-1, 0)
+            'j' -> Just $ CmdMoveCursorRelative (0, 1)
+            'k' -> Just $ CmdMoveCursorRelative (0, -1)
+            'l' -> Just $ CmdMoveCursorRelative (1, 0)
 
             'm' -> Just $ CmdScroll 1
             ',' -> Just $ CmdScroll (-1)
