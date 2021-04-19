@@ -22,6 +22,7 @@ import Control.Exception (bracket)
 
 import Flow
 import System.Environment (getArgs)
+import qualified Data.Text as T
 -----------
 -- State --
 -----------
@@ -30,18 +31,30 @@ newtype Buffer = Buffer { bufferLines :: Seq Text }
 
 bufferLineCount (Buffer bLines) = Seq.length bLines
 
-data Window =
-    EmptyWindow
-  | BufferWindow { windowBuffer :: Buffer, winTopLine :: Int }
+data Rect = Rect { rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int) }
 
-windowFromBuf :: Buffer -> Window
-windowFromBuf b = BufferWindow b 0
+data Window =
+    EmptyWindow Rect
+  | BufferWindow { windowBuffer :: Buffer
+                 , winTopLine :: Int
+                 , winCursorLocation :: (Int, Int)
+                 , winRect :: Rect }
+
+windowFromBuf :: Rect -> Buffer -> Window
+windowFromBuf r b = BufferWindow b 0 (0,0) r
+
+moveCursor :: (Int, Int) -> Window -> Int -> (Int, Int)
+moveCursor (dx,dy) BufferWindow{ .. } winHeight = let
+  (x, y) = winCursorLocation
+  currentLine :: Text
+  currentLine = bufferLines windowBuffer `Seq.index` (winTopLine + y)
+  in (clamp 0 (x+dx) (T.length currentLine), clamp 0 (y+dy) winHeight)
 
 scrollWindow :: Int -> Window -> Window
-scrollWindow _ EmptyWindow = EmptyWindow
-scrollWindow n (BufferWindow buf winTopLine) =
+scrollWindow _ (EmptyWindow r) = EmptyWindow r
+scrollWindow n (BufferWindow buf winTopLine cursor r) =
   let newTopLine = clamp 0 (winTopLine + n) (bufferLineCount buf)
-   in BufferWindow buf newTopLine
+   in BufferWindow buf newTopLine cursor r
 
 clamp a x b = max a (min x b)
 
@@ -60,8 +73,10 @@ makeLenses ''AppState
 mkInitialState :: Vty -> AppArgs -> IO AppState
 mkInitialState vty (AppArgs argsFileToOpen) = do
   bounds <- liftIO $ displayBounds $ outputIface vty
-  initialWindow <- maybe (pure EmptyWindow) 
-                         (\fp -> openFile fp <&> windowFromBuf) 
+  let (w,h) = bounds
+  let winRect = Rect (0,0) (w,h-1)
+  initialWindow <- maybe (pure $ EmptyWindow winRect)
+                         (\fp -> openFile fp <&> windowFromBuf winRect)
                          argsFileToOpen
   pure $ AppState bounds Nothing initialWindow NormalMode
 
@@ -113,6 +128,8 @@ type App a = RWST Vty () AppState IO a
 ----------
 -- View --
 ----------
+type CursorLocation = (Int, Int)
+
 
 view :: App ()
 view = do
@@ -128,14 +145,30 @@ viewAppState state = let
   howToQuit = string defAttr "press Q to exit"
 
   mainWindow = case state ^. stateWindow of
-    EmptyWindow -> howToQuit
-    BufferWindow (Buffer bufLines) topLineNumber -> let
+    EmptyWindow _ -> howToQuit
+    BufferWindow (Buffer bufLines) topLineNumber (cursorX, cursorY) r -> let
       linesToDisplay = Seq.take (h-1) $ Seq.drop topLineNumber bufLines
 
-      showLine :: Text -> Image
-      showLine = text' defAttr
+      cursorAttr :: Attr
+      cursorAttr = defAttr `withBackColor` white `withForeColor` black
 
-      in vertCat $ toList $ showLine <$> linesToDisplay
+      showLine :: Maybe Int -> Int -> Text -> Image
+      showLine (Just cursorX) lineNumber l = let
+          (left, right) = T.splitAt cursorX l
+          in horizCat case T.uncons right of
+            Just (cursorChar, right') ->
+              [ text' defAttr left
+              , char cursorAttr cursorChar
+              , text' defAttr right' ]
+            -- assuming cursorX < length l, we only get nothing if the line is empty
+            Nothing -> [ char cursorAttr ' ' ]
+      showLine Nothing _ l = text' defAttr l
+
+      in vertCat . toList $
+        Seq.mapWithIndex (\i l -> showLine (if i==cursorY then Just cursorX else Nothing)
+                                           i
+                                           l)
+                         linesToDisplay
 
   pic = picForLayers [bar, mainWindow]
     in pic
@@ -188,6 +221,7 @@ data Command a where
 
   CmdEnterNormalMode :: Command InsertModeCmd
   CmdInsertChar      :: Char -> Command InsertModeCmd
+  CmdBackspace       :: Command InsertModeCmd
 
 handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
@@ -201,10 +235,13 @@ handleNormalModeCmd = \case
   CmdOpenFile fp -> do
     -- todo store buf in state
     buf <- liftIO $ openFile fp
-    let window = windowFromBuf buf
+    dims <- getState <&> (^. stateDimensions)
+    let window = windowFromBuf (rectFullScreen dims) buf
     modify (stateWindow .~ window)
     pure Continue
 
+rectFullScreen :: (Int, Int) -> Rect
+rectFullScreen (w, h) = Rect (0,0) (w, h-1)
 
 handleInsertModeCmd :: Command InsertModeCmd -> App ShouldQuit
 handleInsertModeCmd = \case
@@ -257,6 +294,8 @@ handleEvent = do
 
         InsertMode -> maybe (pure Continue) handleInsertModeCmd case ev of
           EvKey KEsc [] -> Just CmdEnterNormalMode
+          EvKey (KChar '\b') [] -> Just CmdBackspace
+          EvKey (KChar c) [] -> Just $ CmdInsertChar c
           _ -> Nothing
 
 
