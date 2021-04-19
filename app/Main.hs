@@ -56,13 +56,13 @@ data AppState = AppState
 
 makeLenses ''AppState
 
-windowFromMaybe :: Maybe FilePath -> IO Window
-windowFromMaybe = maybe (pure EmptyWindow) (\fp -> openFile fp <&> windowFromBuf)
 
 mkInitialState :: Vty -> AppArgs -> IO AppState
 mkInitialState vty (AppArgs argsFileToOpen) = do
   bounds <- liftIO $ displayBounds $ outputIface vty
-  initialWindow <- windowFromMaybe argsFileToOpen
+  initialWindow <- maybe (pure EmptyWindow) 
+                         (\fp -> openFile fp <&> windowFromBuf) 
+                         argsFileToOpen
   pure $ AppState bounds Nothing initialWindow NormalMode
 
 getState :: App AppState
