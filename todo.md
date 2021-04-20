@@ -1,12 +1,12 @@
 # todo
-[  ] some indication of the end of the buffer (highlight differently?)
-
-
-[  ] turn the bar green in insert mode
-[  ] highlight current line
 [  ] add backspace to insert mode
+[  ] add enter to insert mode
+
+[  ] some indication of the end of the buffer (highlight differently?)
 [  ] store filepath in Buffer
+[  ] turn the bar green in insert mode
 [  ] show open file in status bar (and whether it's saved)
+[  ] highlight current line
 [  ] saving back to same file
 [  ] saving to arbitrary location
 [  ] creating a new buffer
