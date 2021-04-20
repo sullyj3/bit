@@ -11,10 +11,10 @@
 module AppState where
 import Relude
 
-import           Graphics.Vty hiding (update)
+import Graphics.Vty ( Event )
 import qualified Data.Sequence as Seq
 
-import Lens.Micro.Platform
+import Lens.Micro.Platform ( makeLenses )
 
 import qualified Data.Text as T
 

@@ -11,7 +11,7 @@ import Relude
 
 import qualified Graphics.Vty as Vty
 import           Graphics.Vty hiding (update)
-import Control.Monad.RWS.Strict
+import Control.Monad.RWS.Strict ( RWST(runRWST) )
 import qualified Data.Sequence as Seq
 
 import Lens.Micro.Platform
@@ -20,7 +20,7 @@ import Control.Exception (bracket)
 import Flow
 import System.Environment (getArgs)
 
-import View
+import View ( viewAppState )
 import AppState
 
 ----------
