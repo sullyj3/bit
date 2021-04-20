@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6bf146b93c22d225ae27603a6f6e56cdd83d264695958fbf73c9a8067b281f59
+-- hash: 303675653efe73a992dca015eeaaac9c51e99851475c5d3b2b00f54e1f5a0295
 
 name:           bit
 version:        0.1.0.0
@@ -46,6 +46,8 @@ library
 executable bit
   main-is: Main.hs
   other-modules:
+      AppState
+      View
       Paths_bit
   hs-source-dirs:
       app

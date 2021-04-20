@@ -22,69 +22,9 @@ import Control.Exception (bracket)
 import Flow
 import System.Environment (getArgs)
 import qualified Data.Text as T
------------
--- State --
------------
 
-newtype Buffer = Buffer { bufferLines :: Seq Text }
-
-bufferLineCount (Buffer bLines) = Seq.length bLines
-
-data Rect = Rect { rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int) }
-
-data Window =
-    EmptyWindow Rect
-  | BufferWindow { windowBuffer :: Buffer
-                 , winTopLine :: Int
-                 , winCursorLocation :: (Int, Int)
-                 , winRect :: Rect }
-
-windowFromBuf :: Rect -> Buffer -> Window
-windowFromBuf r b = BufferWindow b 0 (0,0) r
-
-moveCursor :: (Int, Int) -> Window -> Window
-moveCursor (dx,dy) BufferWindow{ .. } = let
-  Rect _ (_, winHeight) = winRect
-  (x, y) = winCursorLocation
-  currentLine :: Text
-  currentLine = bufferLines windowBuffer `Seq.index` (winTopLine + y + dy)
-  newCursorLocation = (clamp 0 (x+dx) (T.length currentLine-1), clamp 0 (y+dy) winHeight)
-  in BufferWindow windowBuffer winTopLine newCursorLocation winRect
-moveCursor _ w@(EmptyWindow _) = w
-
-scrollWindow :: Int -> Window -> Window
-scrollWindow _ (EmptyWindow r) = EmptyWindow r
-scrollWindow n (BufferWindow buf winTopLine cursor r) =
-  let newTopLine = clamp 0 (winTopLine + n) (bufferLineCount buf)
-   in BufferWindow buf newTopLine cursor r
-
-clamp a x b = max a (min x b)
-
-data EditorMode = NormalMode | InsertMode
-
-data AppState = AppState
-  { _stateDimensions :: (Int, Int)
-  , _stateLastEvent :: Maybe Event
-  , _stateWindow :: Window
-  , _stateMode :: EditorMode
-  }
-
-makeLenses ''AppState
-
-
-mkInitialState :: Vty -> AppArgs -> IO AppState
-mkInitialState vty (AppArgs argsFileToOpen) = do
-  bounds <- liftIO $ displayBounds $ outputIface vty
-  let (w,h) = bounds
-  let winRect = Rect (0,0) (w,h-1)
-  initialWindow <- maybe (pure $ EmptyWindow winRect)
-                         (\fp -> openFile fp <&> windowFromBuf winRect)
-                         argsFileToOpen
-  pure $ AppState bounds Nothing initialWindow NormalMode
-
-
-askVty :: App Vty
-askVty = ask
+import View
+import AppState
 
 ----------
 -- Main --
@@ -97,6 +37,16 @@ parseArgs args = case args of
   [] -> Just (AppArgs Nothing)
   [fp] -> Just . AppArgs . Just $ fp
   _ -> Nothing
+
+mkInitialState :: Vty -> AppArgs -> IO AppState
+mkInitialState vty (AppArgs argsFileToOpen) = do
+  bounds <- liftIO $ displayBounds $ outputIface vty
+  let (w,h) = bounds
+  let winRect = Rect (0,0) (w,h-1)
+  initialWindow <- maybe (pure $ EmptyWindow winRect)
+                         (\fp -> openFile fp <&> windowFromBuf winRect)
+                         argsFileToOpen
+  pure $ AppState bounds Nothing initialWindow NormalMode
 
 
 main = do
@@ -125,83 +75,9 @@ main = do
       liftIO $ Vty.update vty (viewAppState s)
 
 type App a = RWST Vty () AppState IO a
+askVty :: App Vty
+askVty = ask
 
-----------
--- View --
-----------
-type CursorLocation = (Int, Int)
-
-
-
-viewAppState :: AppState -> Picture
-viewAppState state = let
--- todo store mode in state
-  (w,h) = state ^. stateDimensions
-  bar = statusBar state True
-  howToQuit = string defAttr "press Q to exit"
-
-  mainWindow = case state ^. stateWindow of
-    EmptyWindow _ -> howToQuit
-    BufferWindow (Buffer bufLines) topLineNumber (cursorX, cursorY) r -> let
-      linesToDisplay = Seq.take (h-1) $ Seq.drop topLineNumber bufLines
-
-      cursorAttr :: Attr
-      cursorAttr = defAttr `withBackColor` white `withForeColor` black
-
-      showLine :: Maybe Int -> Int -> Text -> Image
-      showLine (Just cursorX) lineNumber l = let
-          (left, right) = T.splitAt cursorX l
-          in horizCat case T.uncons right of
-            Just (cursorChar, right') ->
-              [ text' defAttr left
-              , char cursorAttr cursorChar
-              , text' defAttr right' ]
-            -- assuming cursorX < length l, we only get nothing if the line is empty
-            Nothing -> [ char cursorAttr ' ' ]
-      showLine Nothing _ l = text' defAttr l
-
-      in vertCat . toList $
-        Seq.mapWithIndex (\i l -> showLine (if i==cursorY then Just cursorX else Nothing)
-                                           i
-                                           l)
-                         linesToDisplay
-
-  pic = picForLayers [bar, mainWindow]
-    in pic
-
-statusBar :: AppState -> Bool -> Image
-statusBar state showDiagnostics = translate 0 (h-1) $ horizCat
-  [ modeWidget, middlePadding, diagnosticsWidget, rightPadding ]
-  where
-    (w,h) = state ^. stateDimensions
-    barBgAttr = defAttr `withBackColor` blue
-    modeAttr = defAttr `withBackColor` white `withForeColor` blue
-
-    showMode :: EditorMode -> String
-    showMode = \case
-      NormalMode -> "NORMAL"
-      InsertMode -> "INSERT"
-
-    remainingSpace = w - imageWidth modeWidget - imageWidth diagnosticsWidget
-
-    modeWidget = string modeAttr $ " " <> showMode (state ^. stateMode) <> " "
-    middlePadding = string barBgAttr $ replicate (remainingSpace - 1) ' '
-    diagnosticsWidget | showDiagnostics = viewDiagnostics state
-                      | otherwise       = mempty
-    rightPadding = char barBgAttr ' '
-
-    -- hardcoded for now - the length of the words NORMAL and INSERT plus 1
-    -- space either side
-    modeWidth = 8
-
-viewDiagnostics :: AppState -> Image
-viewDiagnostics state =
-  string (defAttr `withForeColor` white `withBackColor` blue) eventStr
-  where
-    eventStr =
-      maybe "no events yet"
-            (\e -> "Last event: " ++ show e)
-            (state ^. stateLastEvent)
 
 ------------
 -- Events --
