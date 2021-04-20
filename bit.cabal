@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 71244a708bd8e03942f7bbab440b63eeb1f98194e60dc9a104027d3e5507b8ba
+-- hash: 61ad1841aead41e616c30cab2be2a064c42168945b5f6e6fad7d89ff59cfb237
 
 name:           bit
 version:        0.1.0.0
@@ -47,6 +47,7 @@ executable bit
   main-is: Main.hs
   other-modules:
       AppState
+      HandleEvents
       View
       Paths_bit
   hs-source-dirs:
