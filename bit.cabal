@@ -4,11 +4,11 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 791de3f36a4b419ae46bacd9e1d0d9f892ead220eeb634a7bb1703455f025d96
+-- hash: 6bf146b93c22d225ae27603a6f6e56cdd83d264695958fbf73c9a8067b281f59
 
-name:           editor-hs
+name:           bit
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/sullyj3/editor-hs#readme>
+description:    Please see the README on GitHub at <https://github.com/sullyj3/bit#readme>
 homepage:       https://github.com/sullyj3/editor-hs#readme
 bug-reports:    https://github.com/sullyj3/editor-hs/issues
 author:         James Sully
@@ -29,7 +29,7 @@ library
   exposed-modules:
       Lib
   other-modules:
-      Paths_editor_hs
+      Paths_bit
   hs-source-dirs:
       src
   build-depends:
@@ -43,17 +43,17 @@ library
     , vty
   default-language: Haskell2010
 
-executable editor-hs-exe
+executable bit
   main-is: Main.hs
   other-modules:
-      Paths_editor_hs
+      Paths_bit
   hs-source-dirs:
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bit
     , containers
-    , editor-hs
     , flow
     , microlens-platform
     , mtl
@@ -62,18 +62,18 @@ executable editor-hs-exe
     , vty
   default-language: Haskell2010
 
-test-suite editor-hs-test
+test-suite bit-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_editor_hs
+      Paths_bit
   hs-source-dirs:
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , bit
     , containers
-    , editor-hs
     , flow
     , microlens-platform
     , mtl
