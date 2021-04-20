@@ -7,21 +7,12 @@ import AppState
 
 import Relude
 
-import qualified Graphics.Vty as Vty
 import           Graphics.Vty hiding (update)
-import Control.Monad.RWS.Strict
-import Control.Monad.State.Class
 import qualified Data.Sequence as Seq
-import           Data.Sequence (Seq)
 
 import Lens.Micro.Platform
-import Control.Exception (bracket)
 
-import Flow
-import System.Environment (getArgs)
 import qualified Data.Text as T
-
-import AppState
 
 ----------
 -- View --

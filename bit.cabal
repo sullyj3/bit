@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 303675653efe73a992dca015eeaaac9c51e99851475c5d3b2b00f54e1f5a0295
+-- hash: 71244a708bd8e03942f7bbab440b63eeb1f98194e60dc9a104027d3e5507b8ba
 
 name:           bit
 version:        0.1.0.0
@@ -51,7 +51,7 @@ executable bit
       Paths_bit
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wunused-imports
   build-depends:
       base >=4.7 && <5
     , bit
