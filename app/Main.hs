@@ -16,8 +16,7 @@ import Control.Monad.State.Class
 import qualified Data.Sequence as Seq
 import           Data.Sequence (Seq)
 
-import Lens.Micro
-import Lens.Micro.TH
+import Lens.Micro.Platform
 import Control.Exception (bracket)
 
 import Flow
@@ -110,7 +109,8 @@ parseArgs args = case args of
 
 main = do
 
-  args <- getArgs >>= parseArgs .> maybe (die "invalid args") pure
+  args <- getArgs >>= parseArgs
+    .> maybe (die "invalid args") pure
 
   cfg <- standardIOConfig
   withVty cfg \vty -> do
@@ -119,12 +119,18 @@ main = do
     putStrLn "bye!"
   where
     loop :: App ()
-    loop = view >> handleEvent >>= \case
+    loop = presentView >> handleEvent >>= \case
       Continue -> loop
       Quit     -> pure ()
 
     withVty :: Config -> (Vty -> IO c) -> IO c
     withVty cfg = bracket (mkVty cfg) shutdown
+
+    presentView :: App ()
+    presentView = do
+      vty <- askVty
+      s <- get
+      liftIO $ Vty.update vty (viewAppState s)
 
 type App a = RWST Vty () AppState IO a
 
@@ -134,11 +140,6 @@ type App a = RWST Vty () AppState IO a
 type CursorLocation = (Int, Int)
 
 
-view :: App ()
-view = do
-  vty <- askVty
-  s <- get
-  liftIO $ Vty.update vty (viewAppState s)
 
 viewAppState :: AppState -> Picture
 viewAppState state = let

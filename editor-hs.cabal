@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 973911dbcbb604f6b9e3f52ae605eba81f3adc761ef36d226b41ea0d4f6c5e40
+-- hash: 791de3f36a4b419ae46bacd9e1d0d9f892ead220eeb634a7bb1703455f025d96
 
 name:           editor-hs
 version:        0.1.0.0
@@ -36,8 +36,7 @@ library
       base >=4.7 && <5
     , containers
     , flow
-    , microlens
-    , microlens-th
+    , microlens-platform
     , mtl
     , relude
     , text
@@ -56,8 +55,7 @@ executable editor-hs-exe
     , containers
     , editor-hs
     , flow
-    , microlens
-    , microlens-th
+    , microlens-platform
     , mtl
     , relude
     , text
@@ -77,8 +75,7 @@ test-suite editor-hs-test
     , containers
     , editor-hs
     , flow
-    , microlens
-    , microlens-th
+    , microlens-platform
     , mtl
     , relude
     , text
