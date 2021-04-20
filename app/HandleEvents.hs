@@ -47,7 +47,12 @@ handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
   CmdMoveCursorRelative v -> Continue <$ (stateWindow %= moveCursor v)
   CmdScroll n ->             Continue <$ (stateWindow %= scrollWindow n)
-  CmdEnterInsertMode ->      Continue <$ (stateMode .= InsertMode)
+  CmdEnterInsertMode -> use stateWindow >>= \case
+    EmptyWindow r -> do
+      stateWindow .= windowFromBuf r newEmptyBuffer
+      stateMode .= InsertMode
+      pure Continue
+    BufferWindow {..} -> Continue <$ (stateMode .= InsertMode)
   CmdQuit -> pure Quit
   CmdOpenFile fp -> do
     buf <- liftIO $ openFile fp

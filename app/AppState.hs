@@ -25,6 +25,8 @@ import qualified Data.Text as T
 
 newtype Buffer = Buffer { bufferLines :: Seq Text }
 
+newEmptyBuffer = Buffer $ Seq.singleton mempty
+
 bufferLineCount (Buffer bLines) = Seq.length bLines
 
 data Rect = Rect { rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int) }

@@ -10,7 +10,6 @@
 [  ] saving back to same file
 [  ] saving to arbitrary location
 [  ] creating a new buffer
-[  ] when pressing i and there is no window present, create a new buffer
 [  ] I, a, A, o, O
 [  ] selection
 [  ] line numbers
