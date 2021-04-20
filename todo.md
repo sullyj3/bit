@@ -1,17 +1,26 @@
 # todo
-[  ] when pressing i and there is no window present, create a new buffer
-[  ] some indication of the end of the buffer
-[  ] insert mode and barebones editing
-  [  ] all character keys
-  [  ] backspace
+[  ] some indication of the end of the buffer (highlight differently?)
+
+
+[  ] turn the bar green in insert mode
+[  ] highlight current line
+[  ] add backspace to insert mode
+[  ] store filepath in Buffer
+[  ] show open file in status bar (and whether it's saved)
 [  ] saving back to same file
 [  ] saving to arbitrary location
 [  ] creating a new buffer
+[  ] when pressing i and there is no window present, create a new buffer
+[  ] I, a, A, o, O
+[  ] selection
 [  ] line numbers
 [  ] fuzzy finding of files
 [  ] command line
+[  ] display tabs correctly
+[  ] load dhall settings file - provide expandTab, tabstop, shiftwidth, etc (or think about that design)
 [  ] handle long lines correctly
 [  ] map cursor position to buffer position
-[  ] insert mode
 [  ] deal correctly with characters of width > 1
-
+[  ] use a rope for each line (is this a terrible idea? lots of memory overhead. Maybe switch depending on line length)
+[  ]
+[  ] autoclose brackets
