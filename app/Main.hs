@@ -82,11 +82,6 @@ mkInitialState vty (AppArgs argsFileToOpen) = do
                          argsFileToOpen
   pure $ AppState bounds Nothing initialWindow NormalMode
 
-getState :: App AppState
-getState = get
-
-getMode :: App EditorMode
-getMode = getState <&> (^. stateMode)
 
 setEditorMode :: EditorMode -> AppState -> AppState
 setEditorMode mode state = state {_stateMode = mode}
@@ -237,7 +232,7 @@ handleNormalModeCmd = \case
   CmdOpenFile fp -> do
     -- todo store buf in state
     buf <- liftIO $ openFile fp
-    dims <- getState <&> (^. stateDimensions)
+    dims <- use stateDimensions
     let window = windowFromBuf (rectFullScreen dims) buf
     stateWindow .= window
     pure Continue
@@ -269,7 +264,7 @@ handleEvent = do
       stateDimensions .= (w,h)
       pure Continue
     _ ->
-      getMode >>= \case
+      use stateMode >>= \case
         NormalMode -> maybe (pure Continue) handleNormalModeCmd case ev of
           EvKey (KChar c) [] -> case c of
             'Q' -> Just CmdQuit
