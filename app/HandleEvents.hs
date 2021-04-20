@@ -13,6 +13,7 @@ import Relude
 import Control.Monad.RWS.Strict ( RWST )
 import           Graphics.Vty hiding (update)
 import qualified Data.Sequence as Seq
+import qualified Data.Text as T
 
 import Lens.Micro.Platform
 
@@ -49,7 +50,6 @@ handleNormalModeCmd = \case
   CmdEnterInsertMode ->      Continue <$ (stateMode .= InsertMode)
   CmdQuit -> pure Quit
   CmdOpenFile fp -> do
-    -- todo store buf in state
     buf <- liftIO $ openFile fp
     dims <- use stateDimensions
     let window = windowFromBuf (rectFullScreen dims) buf
@@ -64,8 +64,26 @@ handleInsertModeCmd = \case
   CmdEnterNormalMode -> Continue <$ (stateMode .= NormalMode)
 
   CmdInsertChar c -> do
-    -- todo
+    -- todo we shouldn't have to pattern match here
+    stateWindow %= \case
+      EmptyWindow r -> EmptyWindow r
+      win@BufferWindow {..} ->
+        let Buffer bufLines = windowBuffer
+            (x,y) = winCursorLocation
+            bufLines' :: Seq Text
+            bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
+         in win {windowBuffer = Buffer bufLines'}
+    stateWindow %= moveCursor (1,0)
     pure Continue
+
+-- TODO probably inefficient, especially for long lines
+insertChar :: Char -> Int -> Text -> Text
+insertChar c i txt = 
+  let (l,r) = T.splitAt i txt
+      line' = l <> T.singleton c <> r
+   in line'
+
+  
 
 data ShouldQuit = Quit | Continue
   deriving (Show)
