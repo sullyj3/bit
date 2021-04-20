@@ -1,5 +1,5 @@
 # todo
-[  ] mtl lenses
+[  ] when pressing i and there is no window present, create a new buffer
 [  ] some indication of the end of the buffer
 [  ] insert mode and barebones editing
   [  ] all character keys
