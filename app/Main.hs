@@ -83,9 +83,6 @@ mkInitialState vty (AppArgs argsFileToOpen) = do
   pure $ AppState bounds Nothing initialWindow NormalMode
 
 
-setEditorMode :: EditorMode -> AppState -> AppState
-setEditorMode mode state = state {_stateMode = mode}
-
 askVty :: App Vty
 askVty = ask
 
