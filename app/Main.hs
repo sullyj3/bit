@@ -230,22 +230,16 @@ data Command a where
 
 handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
-  CmdMoveCursorRelative v -> do
-    modify (stateWindow %~ moveCursor v)
-    pure Continue
-  CmdScroll n -> do
-    modify (stateWindow %~ scrollWindow n)
-    pure Continue
-  CmdEnterInsertMode -> do
-    modify (setEditorMode InsertMode)
-    pure Continue
+  CmdMoveCursorRelative v -> Continue <$ (stateWindow %= moveCursor v)
+  CmdScroll n ->             Continue <$ (stateWindow %= scrollWindow n)
+  CmdEnterInsertMode ->      Continue <$ (stateMode .= InsertMode)
   CmdQuit -> pure Quit
   CmdOpenFile fp -> do
     -- todo store buf in state
     buf <- liftIO $ openFile fp
     dims <- getState <&> (^. stateDimensions)
     let window = windowFromBuf (rectFullScreen dims) buf
-    modify (stateWindow .~ window)
+    stateWindow .= window
     pure Continue
 
 rectFullScreen :: (Int, Int) -> Rect
@@ -253,9 +247,7 @@ rectFullScreen (w, h) = Rect (0,0) (w, h-1)
 
 handleInsertModeCmd :: Command InsertModeCmd -> App ShouldQuit
 handleInsertModeCmd = \case
-  CmdEnterNormalMode -> do
-    modify (setEditorMode NormalMode)
-    pure Continue
+  CmdEnterNormalMode -> Continue <$ (stateMode .= NormalMode)
 
   CmdInsertChar c -> do
     -- todo
@@ -270,11 +262,11 @@ handleEvent = do
   vty <- askVty
 
   ev <- liftIO $ nextEvent vty
-  modify (stateLastEvent ?~ ev)
+  stateLastEvent ?= ev
 
   case ev of
     EvResize w h -> do
-      modify (stateDimensions .~ (w,h))
+      stateDimensions .= (w,h)
       pure Continue
     _ ->
       getMode >>= \case
