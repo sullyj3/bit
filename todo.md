@@ -1,5 +1,4 @@
 # todo
-- [ ] add backspace to insert mode
 - [ ] add enter to insert mode
 
 - [ ] some indication of the end of the buffer (highlight differently?)
