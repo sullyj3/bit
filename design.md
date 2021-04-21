@@ -32,5 +32,6 @@
 - lsp integration is important
 - how to do extensibility...? msgpack rpc like nvim?
 - maybe plugins are just in haskell?
+- plugins should have a standard configuration format and location
 - configuration needs to be easy to understand - no "highlighters"
 - maybe config with dhall?
