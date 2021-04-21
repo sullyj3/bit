@@ -1,9 +1,8 @@
 # todo
 - [ ] some indication of the end of the buffer (highlight differently?)
 - [ ] refactor to disallow windows with no buffer
-- [ ] turn the bar green in insert mode
-- [ ] refactor eventhandlers to be pure AppState -> AppState functions
 - [ ] highlight current line
+- [ ] refactor eventhandlers to be pure AppState -> AppState functions
 - [ ] store filepath in Buffer
 - [ ] redo cursor movement to interact with scrolling correctly
 - [ ] show open file in status bar (and whether it's saved)

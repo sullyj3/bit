@@ -62,8 +62,13 @@ statusBar state showDiagnostics = translate 0 (h-1) $ horizCat
   [ modeWidget, middlePadding, diagnosticsWidget, rightPadding ]
   where
     (w,h) = state ^. stateDimensions
-    barBgAttr = defAttr `withBackColor` blue
-    modeAttr = defAttr `withBackColor` white `withForeColor` blue
+
+    accentColor = case state ^. stateMode of
+      NormalMode -> blue
+      InsertMode -> green
+
+    barBgAttr = defAttr `withBackColor` accentColor
+    modeAttr = defAttr `withBackColor` white `withForeColor` accentColor
 
     showMode :: EditorMode -> String
     showMode = \case
@@ -74,7 +79,7 @@ statusBar state showDiagnostics = translate 0 (h-1) $ horizCat
 
     modeWidget = string modeAttr $ " " <> showMode (state ^. stateMode) <> " "
     middlePadding = string barBgAttr $ replicate (remainingSpace - 1) ' '
-    diagnosticsWidget | showDiagnostics = viewDiagnostics state
+    diagnosticsWidget | showDiagnostics = viewDiagnostics state accentColor
                       | otherwise       = mempty
     rightPadding = char barBgAttr ' '
 
@@ -82,9 +87,9 @@ statusBar state showDiagnostics = translate 0 (h-1) $ horizCat
     -- space either side
     modeWidth = 8
 
-viewDiagnostics :: AppState -> Image
-viewDiagnostics state =
-  string (defAttr `withForeColor` white `withBackColor` blue) eventStr
+viewDiagnostics :: AppState -> Color -> Image
+viewDiagnostics state accentColor =
+  string (defAttr `withForeColor` white `withBackColor` accentColor) eventStr
   where
     eventStr =
       maybe "no events yet"
