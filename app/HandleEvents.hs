@@ -19,6 +19,7 @@ import Lens.Micro.Platform
 
 
 import AppState
+import Control.Exception (throw)
 
 type App a = RWST Vty () AppState IO a
 
@@ -69,19 +70,40 @@ handleInsertModeCmd = \case
   CmdEnterNormalMode -> Continue <$ (stateMode .= NormalMode)
 
   CmdInsertChar c -> do
-    -- todo we shouldn't have to pattern match here
-    stateWindow %= \case
-      Left r -> Left r
-      Right win@BufferWindow {..} ->
-        let Buffer bufLines = windowBuffer
-            (x,y) = winCursorLocation
-            bufLines' :: Seq Text
-            bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
-            win' = win {windowBuffer = Buffer bufLines'}
-         in Right $ moveCursor (1,0) win'
+    -- if there's no buffer, crash.
+    -- unreachable, since we always create a buffer (if it doesn't already exist) when we enter insert mode,
+    -- and being in insert mode is the only way we could have received a
+    -- Command InsertModeCmd.
+    -- Not sure how to prove this to the type system
+    --
+    -- TODO maybe there should just never be a window without a buffer. Yeah that probably makes the most sense
+    win@BufferWindow {..} <- leftIsUnreachable
+      "Bug: this should be unreachable - Received an insert mode command, but there is no buffer to operate on!"
+      <$> use stateWindow
+
+    let Buffer bufLines = windowBuffer
+        (x,y) = winCursorLocation
+        bufLines' :: Seq Text
+        bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
+        win' = win {windowBuffer = Buffer bufLines'}
+    assign stateWindow $ Right $ moveCursor (1,0) win'
     pure Continue
   CmdBackspace -> do
-    pure Quit
+    stateWindow %= second \win@BufferWindow {..} ->
+      undefined
+    pure Continue
+
+newtype Unreachable = Unreachable Text
+  deriving (Show, Typeable)
+
+instance Exception Unreachable
+
+-- UNSAFE throws on left
+-- TODO: Think about how to get rid of this
+leftIsUnreachable :: Show a => Text -> Either a b -> b
+leftIsUnreachable errMsg = \case
+  Left a -> throw $ Unreachable $ T.pack (show a) <> errMsg 
+  Right b -> b
 
 -- TODO probably inefficient, especially for long lines
 insertChar :: Char -> Int -> Text -> Text

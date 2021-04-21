@@ -30,6 +30,7 @@ newEmptyBuffer = Buffer $ Seq.singleton mempty
 bufferLineCount (Buffer bLines) = Seq.length bLines
 
 data Rect = Rect { rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int) }
+  deriving Show
 
 -- left is a window with no buffer
 type Window = Either Rect BufferWindow
