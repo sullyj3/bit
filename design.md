@@ -1,7 +1,7 @@
 # design
 ## installation
-- needs to be easy to install. Cargo install is ok for the short term
 - provide an install script that puts the binary in .local/bin
+- maybe a .deb
 
 ## new user experience
 - should launch help the first time it's opened
@@ -11,8 +11,8 @@
 - use glow as inspiration, that program is gorgeous
 
 ## ui
-- percentage through the file in status bar
-
+- "line 45/250" in status bar
+  
 ## interaction
 - selection first, like kakoune
 - text objects
