@@ -50,13 +50,20 @@ windowFromBuf r b = Right $ BufferWindow b 0 (0,0) r
 -- TODO: rethink interaction between cursor movement and scrolling.
 -- possibly the coordinates in the buffer should be stored in the state, rather than the coordinates in the window.
 -- That means the cursor would stay on the same character when scrolling automatically
+-- TODO should be able to place the cursor after the end of a line
 moveCursor :: (Int, Int) -> BufferWindow -> BufferWindow
 moveCursor (dx,dy) BufferWindow{ .. } = let
+  bufLines = bufferLines windowBuffer
   Rect _ (_, winHeight) = winRect
   (x, y) = winCursorLocation
-  currentLine :: Text
-  currentLine = bufferLines windowBuffer `Seq.index` (winTopLine + y + dy)
-  newCursorLocation = (clamp 0 (x+dx) (T.length currentLine-1), clamp 0 (y+dy) winHeight)
+  y' = clamp 0 (y+dy) (winHeight - 1)
+
+  -- ensure new lineNumber' is a line that exists
+  lineNumber' = clamp 0 (winTopLine + y') (Seq.length bufLines - 1)
+  currentLine = bufLines `Seq.index` lineNumber'
+
+  x' = clamp 0 (x+dx) (T.length currentLine-1)
+  newCursorLocation = (x', y')
   in BufferWindow windowBuffer winTopLine newCursorLocation winRect
 
 

@@ -43,6 +43,7 @@ data Command a where
   CmdEnterNormalMode :: Command InsertModeCmd
   CmdInsertChar      :: Char -> Command InsertModeCmd
   CmdBackspace       :: Command InsertModeCmd
+  CmdInsertNewline   :: Command InsertModeCmd
 
 handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
@@ -101,6 +102,26 @@ handleInsertModeCmd cmd = do
           win' = win {windowBuffer = Buffer bufLines'}
       assign stateWindow $ Right $ moveCursor (-1,0) win'
       pure Continue
+    CmdInsertNewline -> do
+      let Buffer bufLines = windowBuffer
+          (x,y) = winCursorLocation
+          currLineNumber = winTopLine + y
+          currLine = bufLines `Seq.index` currLineNumber
+          (l,r) = T.splitAt x currLine
+          (top,bottom) = Seq.splitAt currLineNumber bufLines
+
+          -- first element of bottom is the current line, we drop it and replace with our two new lines
+          bufLines' = top <> Seq.fromList [l,r] <> Seq.drop 1 bottom
+
+          win' = win {windowBuffer = Buffer bufLines'}
+      assign stateWindow $ Right $ moveCursor (0, 1) win'
+      pure Continue
+
+-- >>> T.splitAt 4 "0123"
+-- ("0123","")
+--
+-- >>> Seq.splitAt 0 $ Seq.fromList ["foo", "bar", "baz"]
+-- (fromList [],fromList ["foo","bar","baz"])
 
 -- does nothing if i ∉ [0, T.length txt)
 deleteChar :: Int -> Text -> Text
@@ -172,6 +193,7 @@ handleEvent = do
           EvKey KEsc [] -> Just CmdEnterNormalMode
           EvKey (KChar c) [] -> Just $ CmdInsertChar c
           EvKey KBS [] -> Just CmdBackspace
+          EvKey KEnter [] -> Just CmdInsertNewline
           _ -> Nothing
 
 
