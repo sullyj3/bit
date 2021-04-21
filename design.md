@@ -7,6 +7,9 @@
 - should launch help the first time it's opened
 - ability to search for normal mode commands for easy keybinding discovery (help should mention this)
 
+## appearance
+- use glow as inspiration, that program is gorgeous
+
 ## interaction
 - selection first, like kakoune
 - text objects
@@ -28,10 +31,14 @@
 - dedicated duplicate button?
 
 ## configuration and extensibility
+### config
+- respect XDG
+- configuration needs to be easy to understand - no "highlighters"
+- maybe config with dhall?
+- provide a config subcommand that generates/opens the config file
+### extensibility
 - runs as server
 - lsp integration is important
 - how to do extensibility...? msgpack rpc like nvim?
 - maybe plugins are just in haskell?
 - plugins should have a standard configuration format and location
-- configuration needs to be easy to understand - no "highlighters"
-- maybe config with dhall?
