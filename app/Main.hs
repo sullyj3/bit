@@ -39,7 +39,7 @@ mkInitialState vty (AppArgs argsFileToOpen) = do
   bounds <- liftIO $ displayBounds $ outputIface vty
   let (w,h) = bounds
   let winRect = Rect (0,0) (w,h-1)
-  initialWindow <- maybe (pure $ EmptyWindow winRect)
+  initialWindow <- maybe (pure $ Left winRect)
                          (\fp -> openFile fp <&> windowFromBuf winRect)
                          argsFileToOpen
   pure $ AppState bounds Nothing initialWindow NormalMode

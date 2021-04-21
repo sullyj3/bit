@@ -31,17 +31,18 @@ bufferLineCount (Buffer bLines) = Seq.length bLines
 
 data Rect = Rect { rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int) }
 
-data Window =
-    EmptyWindow Rect
-  | BufferWindow { windowBuffer :: Buffer
-                 , winTopLine :: Int
-                 , winCursorLocation :: (Int, Int)
-                 , winRect :: Rect }
+-- left is a window with no buffer
+type Window = Either Rect BufferWindow
+
+data BufferWindow = BufferWindow { windowBuffer :: Buffer
+                                 , winTopLine :: Int
+                                 , winCursorLocation :: (Int, Int)
+                                 , winRect :: Rect }
 
 windowFromBuf :: Rect -> Buffer -> Window
-windowFromBuf r b = BufferWindow b 0 (0,0) r
+windowFromBuf r b = Right $ BufferWindow b 0 (0,0) r
 
-moveCursor :: (Int, Int) -> Window -> Window
+moveCursor :: (Int, Int) -> BufferWindow -> BufferWindow
 moveCursor (dx,dy) BufferWindow{ .. } = let
   Rect _ (_, winHeight) = winRect
   (x, y) = winCursorLocation
@@ -49,10 +50,9 @@ moveCursor (dx,dy) BufferWindow{ .. } = let
   currentLine = bufferLines windowBuffer `Seq.index` (winTopLine + y + dy)
   newCursorLocation = (clamp 0 (x+dx) (T.length currentLine-1), clamp 0 (y+dy) winHeight)
   in BufferWindow windowBuffer winTopLine newCursorLocation winRect
-moveCursor _ w@(EmptyWindow _) = w
 
-scrollWindow :: Int -> Window -> Window
-scrollWindow _ (EmptyWindow r) = EmptyWindow r
+
+scrollWindow :: Int -> BufferWindow -> BufferWindow
 scrollWindow n (BufferWindow buf winTopLine cursor r) =
   let newTopLine = clamp 0 (winTopLine + n) (bufferLineCount buf)
    in BufferWindow buf newTopLine cursor r

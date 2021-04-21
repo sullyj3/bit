@@ -45,14 +45,14 @@ data Command a where
 
 handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
-  CmdMoveCursorRelative v -> Continue <$ (stateWindow %= moveCursor v)
-  CmdScroll n ->             Continue <$ (stateWindow %= scrollWindow n)
+  CmdMoveCursorRelative v -> Continue <$ (stateWindow %= second (moveCursor v))
+  CmdScroll n ->             Continue <$ (stateWindow %= second (scrollWindow n))
   CmdEnterInsertMode -> use stateWindow >>= \case
-    EmptyWindow r -> do
+    Left r -> do
       stateWindow .= windowFromBuf r newEmptyBuffer
       stateMode .= InsertMode
       pure Continue
-    BufferWindow {..} -> Continue <$ (stateMode .= InsertMode)
+    Right BufferWindow {..} -> Continue <$ (stateMode .= InsertMode)
   CmdQuit -> pure Quit
   CmdOpenFile fp -> do
     buf <- liftIO $ openFile fp
@@ -71,24 +71,26 @@ handleInsertModeCmd = \case
   CmdInsertChar c -> do
     -- todo we shouldn't have to pattern match here
     stateWindow %= \case
-      EmptyWindow r -> EmptyWindow r
-      win@BufferWindow {..} ->
+      Left r -> Left r
+      Right win@BufferWindow {..} ->
         let Buffer bufLines = windowBuffer
             (x,y) = winCursorLocation
             bufLines' :: Seq Text
             bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
-         in win {windowBuffer = Buffer bufLines'}
-    stateWindow %= moveCursor (1,0)
+            win' = win {windowBuffer = Buffer bufLines'}
+         in Right $ moveCursor (1,0) win'
     pure Continue
+  CmdBackspace -> do
+    pure Quit
 
 -- TODO probably inefficient, especially for long lines
 insertChar :: Char -> Int -> Text -> Text
-insertChar c i txt = 
+insertChar c i txt =
   let (l,r) = T.splitAt i txt
       line' = l <> T.singleton c <> r
    in line'
 
-  
+
 
 data ShouldQuit = Quit | Continue
   deriving (Show)
@@ -131,8 +133,8 @@ handleEvent = do
 
         InsertMode -> maybe (pure Continue) handleInsertModeCmd case ev of
           EvKey KEsc [] -> Just CmdEnterNormalMode
-          EvKey (KChar '\b') [] -> Just CmdBackspace
           EvKey (KChar c) [] -> Just $ CmdInsertChar c
+          EvKey KBS [] -> Just CmdBackspace
           _ -> Nothing
 
 

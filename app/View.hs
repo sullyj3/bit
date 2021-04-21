@@ -29,8 +29,8 @@ viewAppState state = let
   howToQuit = string defAttr "press Q to exit"
 
   mainWindow = case state ^. stateWindow of
-    EmptyWindow _ -> howToQuit
-    BufferWindow (Buffer bufLines) topLineNumber (cursorX, cursorY) r -> let
+    Left _ -> howToQuit
+    Right (BufferWindow (Buffer bufLines) topLineNumber (cursorX, cursorY) r) -> let
       linesToDisplay = Seq.take (h-1) $ Seq.drop topLineNumber bufLines
 
       cursorAttr :: Attr
