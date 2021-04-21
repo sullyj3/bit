@@ -43,6 +43,13 @@ data BufferWindow = BufferWindow { windowBuffer :: Buffer
 windowFromBuf :: Rect -> Buffer -> Window
 windowFromBuf r b = Right $ BufferWindow b 0 (0,0) r
 
+-- This function is safe at least when called - ensures the cursor stays inside the window, and doesn't move beyond the end of a line.
+-- 
+-- however if we scroll without moving the cursor, the cursor can end up in an invalid state, focusing on a character that doesn't exist
+--
+-- TODO: rethink interaction between cursor movement and scrolling.
+-- possibly the coordinates in the buffer should be stored in the state, rather than the coordinates in the window.
+-- That means the cursor would stay on the same character when scrolling automatically
 moveCursor :: (Int, Int) -> BufferWindow -> BufferWindow
 moveCursor (dx,dy) BufferWindow{ .. } = let
   Rect _ (_, winHeight) = winRect

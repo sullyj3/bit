@@ -65,33 +65,48 @@ handleNormalModeCmd = \case
 rectFullScreen :: (Int, Int) -> Rect
 rectFullScreen (w, h) = Rect (0,0) (w, h-1)
 
+-- TODO at least for now we can probably get away with handling commands purely, eg
+-- handleInsertModeCmd :: Command InsertModeCmd -> AppState -> (AppState, ShouldQuit)
+
 handleInsertModeCmd :: Command InsertModeCmd -> App ShouldQuit
-handleInsertModeCmd = \case
-  CmdEnterNormalMode -> Continue <$ (stateMode .= NormalMode)
+handleInsertModeCmd cmd = do
+  -- if there's no buffer, crash.
+  -- unreachable, since we always create a buffer (if it doesn't already exist) when we enter insert mode,
+  -- and being in insert mode is the only way we could have received a
+  -- Command InsertModeCmd.
+  -- Not sure how to prove this to the type system
+  --
+  -- TODO maybe there should just never be a window without a buffer. Yeah that probably makes the most sense
+  win@BufferWindow {..} <- leftIsUnreachable
+    "Bug: this should be unreachable - Received an insert mode command, but there is no buffer to operate on!"
+    <$> use stateWindow
 
-  CmdInsertChar c -> do
-    -- if there's no buffer, crash.
-    -- unreachable, since we always create a buffer (if it doesn't already exist) when we enter insert mode,
-    -- and being in insert mode is the only way we could have received a
-    -- Command InsertModeCmd.
-    -- Not sure how to prove this to the type system
-    --
-    -- TODO maybe there should just never be a window without a buffer. Yeah that probably makes the most sense
-    win@BufferWindow {..} <- leftIsUnreachable
-      "Bug: this should be unreachable - Received an insert mode command, but there is no buffer to operate on!"
-      <$> use stateWindow
+  case cmd of
+    CmdEnterNormalMode -> Continue <$ (stateMode .= NormalMode)
 
-    let Buffer bufLines = windowBuffer
-        (x,y) = winCursorLocation
-        bufLines' :: Seq Text
-        bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
-        win' = win {windowBuffer = Buffer bufLines'}
-    assign stateWindow $ Right $ moveCursor (1,0) win'
-    pure Continue
-  CmdBackspace -> do
-    stateWindow %= second \win@BufferWindow {..} ->
-      undefined
-    pure Continue
+    CmdInsertChar c -> do
+      let Buffer bufLines = windowBuffer
+          (x,y) = winCursorLocation
+          bufLines' :: Seq Text
+          bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
+          win' = win {windowBuffer = Buffer bufLines'}
+      assign stateWindow $ Right $ moveCursor (1,0) win'
+      pure Continue
+    CmdBackspace -> do
+      let Buffer bufLines = windowBuffer
+          (x,y) = winCursorLocation
+          -- delete the character before the cursor, and move the cursor back one.
+          bufLines' :: Seq Text
+          bufLines' = Seq.adjust' (deleteChar $ x-1) (winTopLine + y) bufLines
+          win' = win {windowBuffer = Buffer bufLines'}
+      assign stateWindow $ Right $ moveCursor (-1,0) win'
+      pure Continue
+
+-- does nothing if i ∉ [0, T.length txt)
+deleteChar :: Int -> Text -> Text
+deleteChar i txt | i < 0 = txt
+                 | i >= T.length txt = txt
+                 | otherwise = let (l,r) = T.splitAt i txt in l <> T.tail r
 
 newtype Unreachable = Unreachable Text
   deriving (Show, Typeable)
