@@ -1,11 +1,12 @@
 # todo
 - [ ] some indication of the end of the buffer (highlight differently?)
-- [ ] disallow windows with no buffer
+- [ ] refactor to disallow windows with no buffer
 - [ ] turn the bar green in insert mode
+- [ ] refactor eventhandlers to be pure AppState -> AppState functions
+- [ ] highlight current line
 - [ ] store filepath in Buffer
 - [ ] redo cursor movement to interact with scrolling correctly
 - [ ] show open file in status bar (and whether it's saved)
-- [ ] highlight current line
 - [ ] saving back to same file
 - [ ] saving to arbitrary location
 - [ ] creating a new buffer
@@ -14,6 +15,7 @@
 - [ ] line numbers
 - [ ] fuzzy finding of files
 - [ ] command line
+- [ ] investigate where I should put strictness annotations
 - [ ] display tabs correctly
 - [ ] load dhall settings file - provide expandTab, tabstop, shiftwidth, etc (or think about that design)
 - [ ] handle long lines correctly
