@@ -52,19 +52,23 @@ windowFromBuf r b = Right $ BufferWindow b 0 (0,0) r
 -- That means the cursor would stay on the same character when scrolling automatically
 -- TODO should be able to place the cursor after the end of a line
 moveCursor :: (Int, Int) -> BufferWindow -> BufferWindow
-moveCursor (dx,dy) BufferWindow{ .. } = let
-  bufLines = bufferLines windowBuffer
-  Rect _ (_, winHeight) = winRect
-  (x, y) = winCursorLocation
-  y' = clamp 0 (y+dy) (winHeight - 1)
+moveCursor (dx,dy) BufferWindow{ .. } =
+  let bufLines = bufferLines windowBuffer
+      Rect _ (_, winHeight) = winRect
+      (x, y) = winCursorLocation
 
-  -- ensure new lineNumber' is a line that exists
-  lineNumber' = clamp 0 (winTopLine + y') (Seq.length bufLines - 1)
-  currentLine = bufLines `Seq.index` lineNumber'
+      y' = clamp 0 (y+dy) (winHeight - 1)
 
-  x' = clamp 0 (x+dx) (T.length currentLine-1)
-  newCursorLocation = (x', y')
-  in BufferWindow windowBuffer winTopLine newCursorLocation winRect
+      -- ensure new lineNumber' is a line that exists
+      -- 
+      -- this is still buggy, this clamp of linenumber is not reflected in the final y'
+      -- not worth fixing til after I redo scroll/cursor movement
+      lineNumber' = clamp 0 (winTopLine + y') (Seq.length bufLines - 1)
+      currentLine = bufLines `Seq.index` lineNumber'
+
+      x' = clamp 0 (x+dx) (T.length currentLine-1)
+      newCursorLocation = (x', y')
+   in BufferWindow windowBuffer winTopLine newCursorLocation winRect
 
 
 scrollWindow :: Int -> BufferWindow -> BufferWindow
