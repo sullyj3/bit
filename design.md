@@ -10,6 +10,9 @@
 ## appearance
 - use glow as inspiration, that program is gorgeous
 
+## ui
+- percentage through the file in status bar
+
 ## interaction
 - selection first, like kakoune
 - text objects
