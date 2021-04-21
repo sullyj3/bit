@@ -1,9 +1,8 @@
 # todo
-- [ ] add enter to insert mode
-
 - [ ] some indication of the end of the buffer (highlight differently?)
-- [ ] store filepath in Buffer
+- [ ] disallow windows with no buffer
 - [ ] turn the bar green in insert mode
+- [ ] store filepath in Buffer
 - [ ] redo cursor movement to interact with scrolling correctly
 - [ ] show open file in status bar (and whether it's saved)
 - [ ] highlight current line
