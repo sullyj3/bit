@@ -48,7 +48,7 @@ windowFromBuf r b = Right $ BufferWindow b 0 (0,0) r
 -- however if we scroll without moving the cursor, the cursor can end up in an invalid state, focusing on a character that doesn't exist
 --
 -- TODO: rethink interaction between cursor movement and scrolling.
--- possibly the coordinates in the buffer should be stored in the state, rather than the coordinates in the window.
+-- probably the coordinates in the buffer should be stored in the state, rather than the coordinates in the window.
 -- That means the cursor would stay on the same character when scrolling automatically
 -- TODO should be able to place the cursor after the end of a line
 moveCursor :: (Int, Int) -> BufferWindow -> BufferWindow
