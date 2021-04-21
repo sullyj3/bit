@@ -1,5 +1,4 @@
 # todo
-- [ ] some indication of the end of the buffer (highlight differently?)
 - [ ] refactor to disallow windows with no buffer
 - [ ] highlight current line
 - [ ] refactor eventhandlers to be pure AppState -> AppState functions

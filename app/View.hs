@@ -1,11 +1,13 @@
 {-# language LambdaCase #-}
 {-# language BlockArguments #-}
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# language NoImplicitPrelude #-}
+{-# language OverloadedStrings #-}
 
 module View where
 import AppState
 
 import Relude
+import Flow
 
 import           Graphics.Vty hiding (update)
 import qualified Data.Sequence as Seq
@@ -13,6 +15,7 @@ import qualified Data.Sequence as Seq
 import Lens.Micro.Platform
 
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as L
 
 ----------
 -- View --
@@ -48,11 +51,19 @@ viewAppState state = let
             Nothing -> [ char cursorAttr ' ' ]
       showLine Nothing _ l = text' defAttr l
 
-      in vertCat . toList $
-        Seq.mapWithIndex (\i l -> showLine (if i==cursorY then Just cursorX else Nothing)
-                                           i
-                                           l)
-                         linesToDisplay
+      theLines :: Seq Image
+      theLines = Seq.mapWithIndex
+        (\i l -> showLine (if i==cursorY then Just cursorX else Nothing)
+                          i
+                          l)
+        linesToDisplay
+      (winWidth, winHeight) = r |> rectDimensions
+      emptyHeight = winHeight - Seq.length theLines
+      emptyLineAttr = defAttr `withBackColor` brightBlack
+      emptyLines = replicate emptyHeight
+        (text emptyLineAttr $ L.fromStrict $ T.replicate winWidth " ")
+
+      in vertCat $ toList theLines <> emptyLines
 
   pic = picForLayers [bar, mainWindow]
     in pic
