@@ -50,8 +50,8 @@ mkInitialWindow winRect = \case
   Nothing -> pure $ windowFromBuf winRect newEmptyBuffer True
 
 
+main :: IO ()
 main = do
-
   args <- getArgs >>= parseArgs
     .> maybe (die "invalid args") pure
 
