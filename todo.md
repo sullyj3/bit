@@ -1,7 +1,7 @@
 # todo
-- [ ] refactor to disallow windows with no buffer
 - [ ] highlight current line
 - [ ] refactor eventhandlers to be pure AppState -> AppState functions
+- [ ] enable del key in insert mode
 - [ ] store filepath in Buffer
 - [ ] redo cursor movement to interact with scrolling correctly
 - [ ] show open file in status bar (and whether it's saved)

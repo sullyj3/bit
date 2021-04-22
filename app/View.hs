@@ -32,38 +32,43 @@ viewAppState state = let
   howToQuit = string defAttr "press Q to exit"
 
   mainWindow = case state ^. stateWindow of
-    Left _ -> howToQuit
-    Right (BufferWindow (Buffer bufLines) topLineNumber (cursorX, cursorY) r) -> let
-      linesToDisplay = Seq.take (h-1) $ Seq.drop topLineNumber bufLines
+    (Window (Buffer bufLines)
+                  topLineNumber
+                  (cursorX, cursorY)
+                  r
+                  showStartMsg) 
+      | showStartMsg -> howToQuit
+      | otherwise    -> let
+        linesToDisplay = Seq.take (h-1) $ Seq.drop topLineNumber bufLines
 
-      cursorAttr :: Attr
-      cursorAttr = defAttr `withBackColor` white `withForeColor` black
+        cursorAttr :: Attr
+        cursorAttr = defAttr `withBackColor` white `withForeColor` black
 
-      showLine :: Maybe Int -> Int -> Text -> Image
-      showLine (Just cursorX) lineNumber l = let
-          (left, right) = T.splitAt cursorX l
-          in horizCat case T.uncons right of
-            Just (cursorChar, right') ->
-              [ text' defAttr left
-              , char cursorAttr cursorChar
-              , text' defAttr right' ]
-            -- assuming cursorX < length l, we only get nothing if the line is empty
-            Nothing -> [ char cursorAttr ' ' ]
-      showLine Nothing _ l = text' defAttr l
+        showLine :: Maybe Int -> Int -> Text -> Image
+        showLine (Just cursorX) lineNumber l = let
+            (left, right) = T.splitAt cursorX l
+            in horizCat case T.uncons right of
+              Just (cursorChar, right') ->
+                [ text' defAttr left
+                , char cursorAttr cursorChar
+                , text' defAttr right' ]
+              -- assuming cursorX < length l, we only get nothing if the line is empty
+              Nothing -> [ char cursorAttr ' ' ]
+        showLine Nothing _ l = text' defAttr l
 
-      theLines :: Seq Image
-      theLines = Seq.mapWithIndex
-        (\i l -> showLine (if i==cursorY then Just cursorX else Nothing)
-                          i
-                          l)
-        linesToDisplay
-      (winWidth, winHeight) = r |> rectDimensions
-      emptyHeight = winHeight - Seq.length theLines
-      emptyLineAttr = defAttr `withBackColor` brightBlack
-      emptyLines = replicate emptyHeight
-        (text emptyLineAttr $ L.fromStrict $ T.replicate winWidth " ")
+        theLines :: Seq Image
+        theLines = Seq.mapWithIndex
+          (\i l -> showLine (if i==cursorY then Just cursorX else Nothing)
+                            i
+                            l)
+          linesToDisplay
+        (winWidth, winHeight) = r |> rectDimensions
+        emptyHeight = winHeight - Seq.length theLines
+        emptyLineAttr = defAttr `withBackColor` brightBlack
+        emptyLines = replicate emptyHeight
+          (text emptyLineAttr $ L.fromStrict $ T.replicate winWidth " ")
 
-      in vertCat $ toList theLines <> emptyLines
+        in vertCat $ toList theLines <> emptyLines
 
   pic = picForLayers [bar, mainWindow]
     in pic

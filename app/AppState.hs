@@ -33,15 +33,15 @@ data Rect = Rect { rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int) }
   deriving Show
 
 -- left is a window with no buffer
-type Window = Either Rect BufferWindow
 
-data BufferWindow = BufferWindow { windowBuffer :: Buffer
-                                 , winTopLine :: Int
-                                 , winCursorLocation :: (Int, Int)
-                                 , winRect :: Rect }
+data Window = Window { windowBuffer :: Buffer
+                     , winTopLine :: Int
+                     , winCursorLocation :: (Int, Int)
+                     , winRect :: Rect 
+                     , winShowStartMessage :: Bool }
 
-windowFromBuf :: Rect -> Buffer -> Window
-windowFromBuf r b = Right $ BufferWindow b 0 (0,0) r
+windowFromBuf :: Rect -> Buffer -> Bool -> Window
+windowFromBuf r b showStartMsg = Window b 0 (0,0) r showStartMsg
 
 -- This function is safe at least when called - ensures the cursor stays inside the window, and doesn't move beyond the end of a line.
 -- 
@@ -51,8 +51,8 @@ windowFromBuf r b = Right $ BufferWindow b 0 (0,0) r
 -- probably the coordinates in the buffer should be stored in the state, rather than the coordinates in the window.
 -- That means the cursor would stay on the same character when scrolling automatically
 -- TODO should be able to place the cursor after the end of a line
-moveCursor :: (Int, Int) -> BufferWindow -> BufferWindow
-moveCursor (dx,dy) BufferWindow{ .. } =
+moveCursor :: (Int, Int) -> Window -> Window
+moveCursor (dx,dy) Window{ .. } =
   let bufLines = bufferLines windowBuffer
       Rect _ (_, winHeight) = winRect
       (x, y) = winCursorLocation
@@ -68,13 +68,13 @@ moveCursor (dx,dy) BufferWindow{ .. } =
 
       x' = clamp 0 (x+dx) (T.length currentLine-1)
       newCursorLocation = (x', y')
-   in BufferWindow windowBuffer winTopLine newCursorLocation winRect
+   in Window windowBuffer winTopLine newCursorLocation winRect winShowStartMessage
 
 
-scrollWindow :: Int -> BufferWindow -> BufferWindow
-scrollWindow n (BufferWindow buf winTopLine cursor r) =
+scrollWindow :: Int -> Window -> Window
+scrollWindow n (Window buf winTopLine cursor r ssm) =
   let newTopLine = clamp 0 (winTopLine + n) (bufferLineCount buf)
-   in BufferWindow buf newTopLine cursor r
+   in Window buf newTopLine cursor r ssm
 
 clamp a x b = max a (min x b)
 

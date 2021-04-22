@@ -47,19 +47,16 @@ data Command a where
 
 handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
-  CmdMoveCursorRelative v -> Continue <$ (stateWindow %= second (moveCursor v))
-  CmdScroll n ->             Continue <$ (stateWindow %= second (scrollWindow n))
-  CmdEnterInsertMode -> use stateWindow >>= \case
-    Left r -> do
-      stateWindow .= windowFromBuf r newEmptyBuffer
-      stateMode .= InsertMode
-      pure Continue
-    Right BufferWindow {..} -> Continue <$ (stateMode .= InsertMode)
+  CmdMoveCursorRelative v -> Continue <$ (stateWindow %= moveCursor v)
+  CmdScroll n ->             Continue <$ (stateWindow %= scrollWindow n)
+  CmdEnterInsertMode -> Continue <$ do
+    stateMode .= InsertMode
+    stateWindow %= (\win -> win {winShowStartMessage = False})
   CmdQuit -> pure Quit
   CmdOpenFile fp -> do
     buf <- liftIO $ openFile fp
     dims <- use stateDimensions
-    let window = windowFromBuf (rectFullScreen dims) buf
+    let window = windowFromBuf (rectFullScreen dims) buf False
     stateWindow .= window
     pure Continue
 
@@ -78,9 +75,7 @@ handleInsertModeCmd cmd = do
   -- Not sure how to prove this to the type system
   --
   -- TODO maybe there should just never be a window without a buffer. Yeah that probably makes the most sense
-  win@BufferWindow {..} <- leftIsUnreachable
-    "Bug: this should be unreachable - Received an insert mode command, but there is no buffer to operate on!"
-    <$> use stateWindow
+  win@Window {..} <- use stateWindow
 
   case cmd of
     CmdEnterNormalMode -> Continue <$ (stateMode .= NormalMode)
@@ -91,7 +86,7 @@ handleInsertModeCmd cmd = do
           bufLines' :: Seq Text
           bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
           win' = win {windowBuffer = Buffer bufLines'}
-      assign stateWindow $ Right $ moveCursor (1,0) win'
+      assign stateWindow $ moveCursor (1,0) win'
       pure Continue
     CmdBackspace -> do
       let Buffer bufLines = windowBuffer
@@ -100,7 +95,7 @@ handleInsertModeCmd cmd = do
           bufLines' :: Seq Text
           bufLines' = Seq.adjust' (deleteChar $ x-1) (winTopLine + y) bufLines
           win' = win {windowBuffer = Buffer bufLines'}
-      assign stateWindow $ Right $ moveCursor (-1,0) win'
+      assign stateWindow $ moveCursor (-1,0) win'
       pure Continue
     CmdInsertNewline -> do
       let Buffer bufLines = windowBuffer
@@ -114,7 +109,7 @@ handleInsertModeCmd cmd = do
           bufLines' = top <> Seq.fromList [l,r] <> Seq.drop 1 bottom
 
           win' = win {windowBuffer = Buffer bufLines'}
-      assign stateWindow $ Right $ moveCursor (0, 1) win'
+      assign stateWindow $ moveCursor (0, 1) win'
       pure Continue
 
 -- >>> T.splitAt 4 "0123"
