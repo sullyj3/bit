@@ -3,6 +3,7 @@
 {-# language NoImplicitPrelude #-}
 {-# language OverloadedStrings #-}
 
+{-# LANGUAGE RecordWildCards #-}
 module View where
 import AppState
 
@@ -22,56 +23,53 @@ import qualified Data.Text.Lazy as L
 ----------
 type CursorLocation = (Int, Int)
 
+viewMainWindow :: Window -> Image
+viewMainWindow Window {..}
+  | showStartMsg = howToQuit
+  | otherwise    = vertCat $ toList theLines <> emptyLines
+  where
+    howToQuit = string defAttr "press Q to exit"
+    (cursorX, cursorY) = winCursorLocation
+    (Buffer bufLines) = windowBuffer
+    (winWidth, winHeight) = winRect |> rectDimensions
+    showStartMsg = winShowStartMessage
+
+    linesToDisplay = Seq.take winHeight $ Seq.drop winTopLine bufLines
+
+    cursorAttr :: Attr
+    cursorAttr = defAttr `withBackColor` white `withForeColor` black
+
+    viewLine :: Maybe Int -> Int -> Text -> Image
+    viewLine (Just cursorX) lineNumber l = let
+        (left, right) = T.splitAt cursorX l
+        in horizCat case T.uncons right of
+          Just (cursorChar, right') ->
+            [ text' defAttr left
+            , char cursorAttr cursorChar
+            , text' defAttr right' ]
+          -- assuming cursorX < length l, we only get nothing if the line is empty
+          Nothing -> [ char cursorAttr ' ' ]
+    viewLine Nothing _ l = text' defAttr l
+
+    theLines :: Seq Image
+    theLines = Seq.mapWithIndex
+      (\i l -> viewLine (if i==cursorY then Just cursorX else Nothing)
+                        i
+                        l)
+      linesToDisplay
+    emptyHeight = winHeight - Seq.length theLines
+    emptyLineAttr = defAttr `withBackColor` brightBlack
+    emptyLines = replicate emptyHeight
+      (text emptyLineAttr $ L.fromStrict $ T.replicate winWidth " ")
 
 
 viewAppState :: AppState -> Picture
-viewAppState state = let
--- todo store mode in state
-  (w,h) = state ^. stateDimensions
-  bar = statusBar state True
-  howToQuit = string defAttr "press Q to exit"
+viewAppState state = 
+  let bar = statusBar state True
+      mainWindow = viewMainWindow $ state ^. stateWindow
 
-  mainWindow = case state ^. stateWindow of
-    (Window (Buffer bufLines)
-                  topLineNumber
-                  (cursorX, cursorY)
-                  r
-                  showStartMsg) 
-      | showStartMsg -> howToQuit
-      | otherwise    -> let
-        linesToDisplay = Seq.take (h-1) $ Seq.drop topLineNumber bufLines
+   in picForLayers [bar, mainWindow]
 
-        cursorAttr :: Attr
-        cursorAttr = defAttr `withBackColor` white `withForeColor` black
-
-        showLine :: Maybe Int -> Int -> Text -> Image
-        showLine (Just cursorX) lineNumber l = let
-            (left, right) = T.splitAt cursorX l
-            in horizCat case T.uncons right of
-              Just (cursorChar, right') ->
-                [ text' defAttr left
-                , char cursorAttr cursorChar
-                , text' defAttr right' ]
-              -- assuming cursorX < length l, we only get nothing if the line is empty
-              Nothing -> [ char cursorAttr ' ' ]
-        showLine Nothing _ l = text' defAttr l
-
-        theLines :: Seq Image
-        theLines = Seq.mapWithIndex
-          (\i l -> showLine (if i==cursorY then Just cursorX else Nothing)
-                            i
-                            l)
-          linesToDisplay
-        (winWidth, winHeight) = r |> rectDimensions
-        emptyHeight = winHeight - Seq.length theLines
-        emptyLineAttr = defAttr `withBackColor` brightBlack
-        emptyLines = replicate emptyHeight
-          (text emptyLineAttr $ L.fromStrict $ T.replicate winWidth " ")
-
-        in vertCat $ toList theLines <> emptyLines
-
-  pic = picForLayers [bar, mainWindow]
-    in pic
 
 statusBar :: AppState -> Bool -> Image
 statusBar state showDiagnostics = translate 0 (h-1) $ horizCat
