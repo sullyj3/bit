@@ -132,6 +132,7 @@ handleEvent = do
 
   case ev of
     EvResize w h -> do
+      -- TODO need to update window size here, I think.
       stateDimensions .= (w,h)
       pure Continue
     _ ->

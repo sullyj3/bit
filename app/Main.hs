@@ -38,6 +38,7 @@ mkInitialState :: Vty -> AppArgs -> IO AppState
 mkInitialState vty (AppArgs argsFileToOpen) = do
   bounds <- liftIO $ displayBounds $ outputIface vty
   let (w,h) = bounds
+  -- h-1 leaves room for the status bar
   let winRect = Rect (0,0) (w,h-1)
   initialWindow <- mkInitialWindow winRect argsFileToOpen
   pure $ AppState bounds Nothing initialWindow NormalMode

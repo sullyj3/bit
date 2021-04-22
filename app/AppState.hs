@@ -34,6 +34,9 @@ data Rect = Rect { rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int) }
 
 -- left is a window with no buffer
 
+-- TODO make a damn decision about whether to allow multiple windows,
+-- stick to tabs like Amp, or run as a server and let the WM/multiplexer handle
+-- it
 data Window = Window { windowBuffer :: Buffer
                      , winTopLine :: Int
                      , winCursorLocation :: (Int, Int)
@@ -41,7 +44,7 @@ data Window = Window { windowBuffer :: Buffer
                      , winShowStartMessage :: Bool }
 
 windowFromBuf :: Rect -> Buffer -> Bool -> Window
-windowFromBuf r b showStartMsg = Window b 0 (0,0) r showStartMsg
+windowFromBuf rect buf showStartMsg = Window buf 0 (0,0) rect showStartMsg
 
 -- This function is safe at least when called - ensures the cursor stays inside the window, and doesn't move beyond the end of a line.
 -- 
