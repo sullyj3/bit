@@ -1,12 +1,12 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# language LambdaCase #-}
+{-# language BlockArguments #-}
+{-# language NoImplicitPrelude #-}
+{-# language OverloadedStrings #-}
+{-# language RecordWildCards #-}
+{-# language TemplateHaskell #-}
+{-# language DataKinds #-}
+{-# language GADTs #-}
 
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
 import Relude
 
 import qualified Graphics.Vty as Vty

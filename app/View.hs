@@ -2,8 +2,8 @@
 {-# language BlockArguments #-}
 {-# language NoImplicitPrelude #-}
 {-# language OverloadedStrings #-}
+{-# language RecordWildCards #-}
 
-{-# LANGUAGE RecordWildCards #-}
 module View where
 import AppState
 
@@ -64,11 +64,10 @@ viewMainWindow Window {..}
 
 
 viewAppState :: AppState -> Picture
-viewAppState state = 
-  let bar = statusBar state True
-      mainWindow = viewMainWindow $ state ^. stateWindow
-
-   in picForLayers [bar, mainWindow]
+viewAppState state = picForLayers [bar, mainWindow]
+  where
+    bar = statusBar state True
+    mainWindow = viewMainWindow $ state ^. stateWindow
 
 
 statusBar :: AppState -> Bool -> Image

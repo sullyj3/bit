@@ -1,12 +1,11 @@
 {-# language LambdaCase #-}
 {-# language BlockArguments #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
-
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
+{-# language NoImplicitPrelude #-}
+{-# language OverloadedStrings #-}
+{-# language RecordWildCards #-}
+{-# language TemplateHaskell #-}
+{-# language DataKinds #-}
+{-# language GADTs #-}
 
 module AppState where
 import Relude

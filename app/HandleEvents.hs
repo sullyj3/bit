@@ -1,12 +1,12 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# language LambdaCase #-}
+{-# language BlockArguments #-}
+{-# language NoImplicitPrelude #-}
+{-# language OverloadedStrings #-}
+{-# language RecordWildCards #-}
+{-# language TemplateHaskell #-}
+{-# language DataKinds #-}
+{-# language GADTs #-}
 
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
 module HandleEvents where
 import Relude
 
@@ -112,11 +112,9 @@ deleteChar i txt | i < 0 = txt
 
 -- TODO probably inefficient, especially for long lines
 insertChar :: Char -> Int -> Text -> Text
-insertChar c i txt =
-  let (l,r) = T.splitAt i txt
-      line' = l <> T.singleton c <> r
-   in line'
-
+insertChar c i txt = l <> T.singleton c <> r
+  where
+    (l,r) = T.splitAt i txt
 
 
 data ShouldQuit = Quit | Continue
