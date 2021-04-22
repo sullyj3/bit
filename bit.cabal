@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 61ad1841aead41e616c30cab2be2a064c42168945b5f6e6fad7d89ff59cfb237
+-- hash: 3c79a9b981c3787722d33c72963560a2fd57eb681b735e5f410df666b977ce1a
 
 name:           bit
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      UnsafeUtils
   other-modules:
       Paths_bit
   hs-source-dirs:

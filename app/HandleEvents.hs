@@ -19,7 +19,6 @@ import Lens.Micro.Platform
 
 
 import AppState
-import Control.Exception (throw)
 
 type App a = RWST Vty () AppState IO a
 
@@ -68,13 +67,6 @@ rectFullScreen (w, h) = Rect (0,0) (w, h-1)
 
 handleInsertModeCmd :: Command InsertModeCmd -> App ShouldQuit
 handleInsertModeCmd cmd = do
-  -- if there's no buffer, crash.
-  -- unreachable, since we always create a buffer (if it doesn't already exist) when we enter insert mode,
-  -- and being in insert mode is the only way we could have received a
-  -- Command InsertModeCmd.
-  -- Not sure how to prove this to the type system
-  --
-  -- TODO maybe there should just never be a window without a buffer. Yeah that probably makes the most sense
   win@Window {..} <- use stateWindow
 
   case cmd of
@@ -112,29 +104,11 @@ handleInsertModeCmd cmd = do
       assign stateWindow $ moveCursor (0, 1) win'
       pure Continue
 
--- >>> T.splitAt 4 "0123"
--- ("0123","")
---
--- >>> Seq.splitAt 0 $ Seq.fromList ["foo", "bar", "baz"]
--- (fromList [],fromList ["foo","bar","baz"])
-
 -- does nothing if i ∉ [0, T.length txt)
 deleteChar :: Int -> Text -> Text
 deleteChar i txt | i < 0 = txt
                  | i >= T.length txt = txt
                  | otherwise = let (l,r) = T.splitAt i txt in l <> T.tail r
-
-newtype Unreachable = Unreachable Text
-  deriving (Show, Typeable)
-
-instance Exception Unreachable
-
--- UNSAFE throws on left
--- TODO: Think about how to get rid of this
-leftIsUnreachable :: Show a => Text -> Either a b -> b
-leftIsUnreachable errMsg = \case
-  Left a -> throw $ Unreachable $ T.pack (show a) <> errMsg 
-  Right b -> b
 
 -- TODO probably inefficient, especially for long lines
 insertChar :: Char -> Int -> Text -> Text
