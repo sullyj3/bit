@@ -67,12 +67,11 @@ rectFullScreen (w, h) = Rect (0,0) (w, h-1)
 -- At least for now, lets see if we can get away with handling insert mode
 -- commands purely.
 handleInsertModeCmd :: MonadState AppState m => Command InsertModeCmd -> m ShouldQuit
-handleInsertModeCmd cmd = Continue <$
-  case cmd of
-    CmdEnterNormalMode -> stateMode .= NormalMode
-    CmdInsertChar c    -> stateWindow %= winInsertChar c
-    CmdBackspace       -> stateWindow %= winBackspace
-    CmdInsertNewline   -> stateWindow %= winInsertNewline
+handleInsertModeCmd = (Continue <$) . \case
+  CmdEnterNormalMode -> stateMode .= NormalMode
+  CmdInsertChar c    -> stateWindow %= winInsertChar c
+  CmdBackspace       -> stateWindow %= winBackspace
+  CmdInsertNewline   -> stateWindow %= winInsertNewline
 
 winInsertChar :: Char -> Window -> Window
 winInsertChar c win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} =
