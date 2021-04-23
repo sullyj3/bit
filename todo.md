@@ -2,6 +2,7 @@
 - [ ] refactor eventhandlers to be pure AppState -> AppState functions
 - [ ] enable del key in insert mode
 - [ ] store filepath in Buffer
+- [ ] lensify Window
 - [ ] make current line highlight full width
 - [ ] redo cursor movement to interact with scrolling correctly
 - [ ] show open file in status bar (and whether it's saved)
@@ -12,6 +13,7 @@
 - [ ] selection
 - [ ] line numbers
 - [ ] fuzzy finding of files
+
 - [ ] command line
 - [ ] investigate where I should put strictness annotations
 - [ ] display tabs correctly
