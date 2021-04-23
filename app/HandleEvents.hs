@@ -67,32 +67,37 @@ rectFullScreen (w, h) = Rect (0,0) (w, h-1)
 -- At least for now, lets see if we can get away with handling insert mode
 -- commands purely.
 handleInsertModeCmd :: MonadState AppState m => Command InsertModeCmd -> m ShouldQuit
-handleInsertModeCmd cmd = use stateWindow >>= \ win@Window {..} ->
-  let (x,y) = winCursorLocation
-      Buffer bufLines = windowBuffer in
-    case cmd of
-      CmdEnterNormalMode -> Continue <$ (stateMode .= NormalMode)
-      CmdInsertChar c -> Continue <$ (stateWindow .= moveCursor (1,0) win')
-        where
-          bufLines' :: Seq Text
-          bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
-          win' = win {windowBuffer = Buffer bufLines'}
-      CmdBackspace -> Continue <$ (stateWindow .= moveCursor (-1,0) win')
-        where
-          -- delete the character before the cursor, and move the cursor back one.
-          bufLines' :: Seq Text
-          bufLines' = Seq.adjust' (deleteChar $ x-1) (winTopLine + y) bufLines
-          win' = win {windowBuffer = Buffer bufLines'}
-      CmdInsertNewline -> Continue <$ (stateWindow .= moveCursor (0, 1) win')
-        where
-          currLineNumber = winTopLine + y
-          currLine = bufLines `Seq.index` currLineNumber
-          (l,r) = T.splitAt x currLine
-          (top,bottom) = Seq.splitAt currLineNumber bufLines
-          -- first element of bottom is the current line, we drop it and replace with
-          -- the two halves of the split line
-          bufLines' = top <> Seq.fromList [l,r] <> Seq.drop 1 bottom
-          win' = win {windowBuffer = Buffer bufLines'}
+handleInsertModeCmd cmd = Continue <$
+  case cmd of
+    CmdEnterNormalMode -> stateMode .= NormalMode
+    CmdInsertChar c    -> stateWindow %= winInsertChar c
+    CmdBackspace       -> stateWindow %= winBackspace
+    CmdInsertNewline   -> stateWindow %= winInsertNewline
+
+winInsertChar :: Char -> Window -> Window
+winInsertChar c win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} =
+  moveCursor (1,0) win' where
+    bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
+    win' = win {windowBuffer = Buffer bufLines'}
+
+winBackspace :: Window -> Window
+winBackspace win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} =
+  moveCursor (-1,0) win' where
+    -- delete the character before the cursor, and move the cursor back one.
+    bufLines' = Seq.adjust' (deleteChar $ x-1) (winTopLine + y) bufLines
+    win' = win {windowBuffer = Buffer bufLines'}
+
+winInsertNewline :: Window -> Window
+winInsertNewline win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} =
+  moveCursor (0, 1) win' where
+    currLineNumber = winTopLine + y
+    currLine = bufLines `Seq.index` currLineNumber
+    (l,r) = T.splitAt x currLine
+    (top,bottom) = Seq.splitAt currLineNumber bufLines
+    -- first element of bottom is the current line, we drop it and replace with
+    -- the two halves of the split line
+    bufLines' = top <> Seq.fromList [l,r] <> Seq.drop 1 bottom
+    win' = win {windowBuffer = Buffer bufLines'}
 
 
 -- does nothing if i ∉ [0, T.length txt)
