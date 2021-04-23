@@ -1,8 +1,8 @@
 # todo
-- [ ] highlight current line
 - [ ] refactor eventhandlers to be pure AppState -> AppState functions
 - [ ] enable del key in insert mode
 - [ ] store filepath in Buffer
+- [ ] make current line highlight full width
 - [ ] redo cursor movement to interact with scrolling correctly
 - [ ] show open file in status bar (and whether it's saved)
 - [ ] saving back to same file

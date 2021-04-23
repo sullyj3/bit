@@ -13,7 +13,7 @@ import Flow
 import           Graphics.Vty hiding (update)
 import qualified Data.Sequence as Seq
 
-import Lens.Micro.Platform
+import Lens.Micro.Platform ( (^.) )
 
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
@@ -36,17 +36,20 @@ viewMainWindow Window {..}
 
     linesToDisplay = Seq.take winHeight $ Seq.drop winTopLine bufLines
 
-    cursorAttr :: Attr
-    cursorAttr = defAttr `withBackColor` white `withForeColor` black
+    currLineColor :: Color
+    currLineColor = blue
+
+    currLineAttr = defAttr `withBackColor` currLineColor
+    cursorAttr = defAttr `withBackColor` black `withForeColor` currLineColor
 
     viewLine :: Maybe Int -> Int -> Text -> Image
     viewLine (Just cursorX) lineNumber l = let
         (left, right) = T.splitAt cursorX l
         in horizCat case T.uncons right of
           Just (cursorChar, right') ->
-            [ text' defAttr left
+            [ text' currLineAttr left
             , char cursorAttr cursorChar
-            , text' defAttr right' ]
+            , text' currLineAttr right' ]
           -- assuming cursorX < length l, we only get nothing if the line is empty
           Nothing -> [ char cursorAttr ' ' ]
     viewLine Nothing _ l = text' defAttr l
