@@ -24,8 +24,10 @@ import qualified Data.Text as T
 
 newtype Buffer = Buffer { bufferLines :: Seq Text }
 
+newEmptyBuffer :: Buffer
 newEmptyBuffer = Buffer $ Seq.singleton mempty
 
+bufferLineCount :: Buffer -> Int
 bufferLineCount (Buffer bLines) = Seq.length bLines
 
 data Rect = Rect { rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int) }
@@ -78,6 +80,7 @@ scrollWindow n (Window buf winTopLine cursor r ssm) =
   let newTopLine = clamp 0 (winTopLine + n) (bufferLineCount buf)
    in Window buf newTopLine cursor r ssm
 
+clamp :: Ord a => a -> a -> a -> a
 clamp a x b = max a (min x b)
 
 data EditorMode = NormalMode | InsertMode

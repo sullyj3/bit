@@ -35,7 +35,7 @@ parseArgs args = case args of
   _ -> Nothing
 
 mkInitialState :: Vty -> AppArgs -> IO AppState
-mkInitialState vty (AppArgs argsFileToOpen) = do
+mkInitialState vty AppArgs{..} = do
   bounds <- liftIO $ displayBounds $ outputIface vty
   let (w,h) = bounds
   -- h-1 leaves room for the status bar

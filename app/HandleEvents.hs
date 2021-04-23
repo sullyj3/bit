@@ -34,19 +34,19 @@ askVty = ask
 data CmdType = NormalModeCmd | InsertModeCmd | AnyModeCmd
 
 data Command a where
-  CmdScroll          :: Int -> Command NormalModeCmd
-  CmdEnterInsertMode :: Command NormalModeCmd
-  CmdQuit            :: Command NormalModeCmd
-  CmdOpenFile        :: FilePath -> Command NormalModeCmd
-  CmdMoveCursorRelative :: (Int, Int) -> Command NormalModeCmd
+  CmdScroll          :: Int -> Command 'NormalModeCmd
+  CmdEnterInsertMode :: Command 'NormalModeCmd
+  CmdQuit            :: Command 'NormalModeCmd
+  CmdOpenFile        :: FilePath -> Command 'NormalModeCmd
+  CmdMoveCursorRelative :: (Int, Int) -> Command 'NormalModeCmd
 
-  CmdEnterNormalMode :: Command InsertModeCmd
-  CmdInsertChar      :: Char -> Command InsertModeCmd
-  CmdBackspace       :: Command InsertModeCmd
-  CmdInsertNewline   :: Command InsertModeCmd
-  CmdDel             :: Command InsertModeCmd
+  CmdEnterNormalMode :: Command 'InsertModeCmd
+  CmdInsertChar      :: Char -> Command 'InsertModeCmd
+  CmdBackspace       :: Command 'InsertModeCmd
+  CmdInsertNewline   :: Command 'InsertModeCmd
+  CmdDel             :: Command 'InsertModeCmd
 
-handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
+handleNormalModeCmd :: Command 'NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
   CmdMoveCursorRelative v -> Continue <$ (stateWindow %= moveCursor v)
   CmdScroll n ->             Continue <$ (stateWindow %= scrollWindow n)
@@ -67,7 +67,7 @@ rectFullScreen (w, h) = Rect (0,0) (w, h-1)
 -- handleNormalModeCmd must be able to do IO (eg for opening files).
 -- At least for now, lets see if we can get away with handling insert mode
 -- commands purely.
-handleInsertModeCmd :: MonadState AppState m => Command InsertModeCmd -> m ShouldQuit
+handleInsertModeCmd :: MonadState AppState m => Command 'InsertModeCmd -> m ShouldQuit
 handleInsertModeCmd = (Continue <$) . \case
   CmdEnterNormalMode -> stateMode .= NormalMode
   CmdInsertChar c    -> stateWindow %= winInsertChar c

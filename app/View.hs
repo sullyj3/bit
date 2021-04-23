@@ -24,7 +24,7 @@ import qualified Data.Text.Lazy as L
 type CursorLocation = (Int, Int)
 
 viewMainWindow :: Window -> Image
-viewMainWindow Window {..}
+viewMainWindow Window{..}
   | showStartMsg = howToQuit
   | otherwise    = vertCat $ toList theLines <> emptyLines
   where
@@ -35,24 +35,6 @@ viewMainWindow Window {..}
     showStartMsg = winShowStartMessage
 
     linesToDisplay = Seq.take winHeight $ Seq.drop winTopLine bufLines
-
-    currLineColor :: Color
-    currLineColor = blue
-
-    currLineAttr = defAttr `withBackColor` currLineColor
-    cursorAttr = defAttr `withBackColor` black `withForeColor` currLineColor
-
-    viewLine :: Maybe Int -> Int -> Text -> Image
-    viewLine (Just cursorX) _lineNumber l = let
-        (left, right) = T.splitAt cursorX l
-        in horizCat case T.uncons right of
-          Just (cursorChar, right') ->
-            [ text' currLineAttr left
-            , char cursorAttr cursorChar
-            , text' currLineAttr right' ]
-          -- assuming cursorX < length l, we only get nothing if the line is empty
-          Nothing -> [ char cursorAttr ' ' ]
-    viewLine Nothing _ l = text' defAttr l
 
     theLines :: Seq Image
     theLines = Seq.mapWithIndex
@@ -65,21 +47,42 @@ viewMainWindow Window {..}
     emptyLines = replicate emptyHeight
       (text emptyLineAttr $ L.fromStrict $ T.replicate winWidth " ")
 
+viewLine :: Maybe Int -> Int -> Text -> Image
+viewLine mCursorX _lineNumber l = case mCursorX of
+  Just cursorX -> let
+    (left, right) = T.splitAt cursorX l
+    in horizCat case T.uncons right of
+      Just (cursorChar, right') ->
+        [ text' currLineAttr left
+        , char cursorAttr cursorChar
+        , text' currLineAttr right' ]
+      -- assuming cursorX < length l, we only get nothing if the line is empty
+      Nothing -> [ char cursorAttr ' ' ]
+  Nothing -> text' defAttr l
+  where
+    currLineColor :: Color
+    currLineColor = blue
+
+    currLineAttr = defAttr `withBackColor` currLineColor
+    cursorAttr = defAttr `withBackColor` black `withForeColor` currLineColor
+
+
+
 
 viewAppState :: AppState -> Picture
-viewAppState state = picForLayers [bar, mainWindow]
+viewAppState appState = picForLayers [bar, mainWindow]
   where
-    bar = statusBar state True
-    mainWindow = viewMainWindow $ state ^. stateWindow
+    bar = statusBar appState True
+    mainWindow = viewMainWindow $ appState ^. stateWindow
 
 
 statusBar :: AppState -> Bool -> Image
-statusBar state showDiagnostics = translate 0 (h-1) $ horizCat
+statusBar appState showDiagnostics = translate 0 (h-1) $ horizCat
   [ modeWidget, middlePadding, diagnosticsWidget, rightPadding ]
   where
-    (w,h) = state ^. stateDimensions
+    (w,h) = appState ^. stateDimensions
 
-    accentColor = case state ^. stateMode of
+    accentColor = case appState ^. stateMode of
       NormalMode -> blue
       InsertMode -> green
 
@@ -93,17 +96,17 @@ statusBar state showDiagnostics = translate 0 (h-1) $ horizCat
 
     remainingSpace = w - imageWidth modeWidget - imageWidth diagnosticsWidget
 
-    modeWidget = string modeAttr $ " " <> showMode (state ^. stateMode) <> " "
+    modeWidget = string modeAttr $ " " <> showMode (appState ^. stateMode) <> " "
     middlePadding = string barBgAttr $ replicate (remainingSpace - 1) ' '
-    diagnosticsWidget | showDiagnostics = viewDiagnostics state accentColor
+    diagnosticsWidget | showDiagnostics = viewDiagnostics appState accentColor
                       | otherwise       = mempty
     rightPadding = char barBgAttr ' '
 
 viewDiagnostics :: AppState -> Color -> Image
-viewDiagnostics state accentColor =
+viewDiagnostics appState accentColor =
   string (defAttr `withForeColor` white `withBackColor` accentColor) eventStr
   where
     eventStr =
       maybe "no events yet"
             (\e -> "Last event: " ++ show e)
-            (state ^. stateLastEvent)
+            (appState ^. stateLastEvent)
