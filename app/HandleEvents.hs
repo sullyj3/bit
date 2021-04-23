@@ -1,5 +1,6 @@
 {-# language LambdaCase #-}
 {-# language BlockArguments #-}
+{-# language FlexibleContexts #-}
 {-# language NoImplicitPrelude #-}
 {-# language OverloadedStrings #-}
 {-# language RecordWildCards #-}
@@ -19,7 +20,6 @@ import Lens.Micro.Platform
 
 
 import AppState
-import Flow ((|>))
 
 type App a = RWST Vty () AppState IO a
 
@@ -66,28 +66,26 @@ rectFullScreen (w, h) = Rect (0,0) (w, h-1)
 -- handleNormalModeCmd must be able to do IO (eg for opening files).
 -- At least for now, lets see if we can get away with handling insert mode
 -- commands purely.
-handleInsertModeCmd :: Command InsertModeCmd -> AppState -> (AppState, ShouldQuit)
-handleInsertModeCmd cmd state = let
-  win@Window {..} = state ^. stateWindow
-  (x,y) = winCursorLocation
-  Buffer bufLines = windowBuffer
-  in case cmd of
-    CmdEnterNormalMode -> (state |> stateMode .~ NormalMode, Continue)
-    CmdInsertChar c ->
-      let bufLines' :: Seq Text
+handleInsertModeCmd :: MonadState AppState m => Command InsertModeCmd -> m ShouldQuit
+handleInsertModeCmd cmd = use stateWindow >>= \ win@Window {..} ->
+  let (x,y) = winCursorLocation
+      Buffer bufLines = windowBuffer in
+    case cmd of
+      CmdEnterNormalMode -> Continue <$ (stateMode .= NormalMode)
+      CmdInsertChar c -> Continue <$ (stateWindow .= moveCursor (1,0) win')
+        where
+          bufLines' :: Seq Text
           bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
           win' = win {windowBuffer = Buffer bufLines'}
-       in (state |> stateWindow .~ moveCursor (1,0) win', Continue)
-
-    CmdBackspace ->
-      let -- delete the character before the cursor, and move the cursor back one.
+      CmdBackspace -> Continue <$ (stateWindow .= moveCursor (-1,0) win')
+        where
+          -- delete the character before the cursor, and move the cursor back one.
           bufLines' :: Seq Text
           bufLines' = Seq.adjust' (deleteChar $ x-1) (winTopLine + y) bufLines
           win' = win {windowBuffer = Buffer bufLines'}
-       in (state |> stateWindow .~ moveCursor (-1,0) win', Continue)
-
-    CmdInsertNewline -> do
-      let currLineNumber = winTopLine + y
+      CmdInsertNewline -> Continue <$ (stateWindow .= moveCursor (0, 1) win')
+        where
+          currLineNumber = winTopLine + y
           currLine = bufLines `Seq.index` currLineNumber
           (l,r) = T.splitAt x currLine
           (top,bottom) = Seq.splitAt currLineNumber bufLines
@@ -95,7 +93,6 @@ handleInsertModeCmd cmd state = let
           -- the two halves of the split line
           bufLines' = top <> Seq.fromList [l,r] <> Seq.drop 1 bottom
           win' = win {windowBuffer = Buffer bufLines'}
-       in (state |> stateWindow .~ moveCursor (0, 1) win', Continue)
 
 
 -- does nothing if i ∉ [0, T.length txt)
@@ -153,10 +150,7 @@ handleEvent = do
 
         InsertMode -> maybe
           (pure Continue)
-          (\cmd -> do state <- get
-                      let (state', shouldContinue) = handleInsertModeCmd cmd state
-                      put state'
-                      pure shouldContinue)
+          handleInsertModeCmd
           case ev of
             EvKey KEsc [] -> Just CmdEnterNormalMode
             EvKey (KChar c) [] -> Just $ CmdInsertChar c
