@@ -15,7 +15,7 @@ import Control.Monad.RWS.Strict ( RWST(runRWST) )
 
 import Control.Exception (bracket)
 
-import Flow
+import Flow ( (.>) )
 import System.Environment (getArgs)
 
 import View ( viewAppState )

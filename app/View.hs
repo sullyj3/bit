@@ -8,7 +8,7 @@ module View where
 import AppState
 
 import Relude
-import Flow
+import Flow ( (|>) )
 
 import           Graphics.Vty hiding (update)
 import qualified Data.Sequence as Seq
