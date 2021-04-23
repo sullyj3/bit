@@ -44,6 +44,7 @@ data Command a where
   CmdInsertChar      :: Char -> Command InsertModeCmd
   CmdBackspace       :: Command InsertModeCmd
   CmdInsertNewline   :: Command InsertModeCmd
+  CmdDel             :: Command InsertModeCmd
 
 handleNormalModeCmd :: Command NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
@@ -72,6 +73,7 @@ handleInsertModeCmd = (Continue <$) . \case
   CmdInsertChar c    -> stateWindow %= winInsertChar c
   CmdBackspace       -> stateWindow %= winBackspace
   CmdInsertNewline   -> stateWindow %= winInsertNewline
+  CmdDel             -> stateWindow %= winDel
 
 winInsertChar :: Char -> Window -> Window
 winInsertChar c win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} =
@@ -79,11 +81,23 @@ winInsertChar c win@Window {winCursorLocation = (x,y), windowBuffer = Buffer buf
     bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
     win' = win {windowBuffer = Buffer bufLines'}
 
+-- delete the character before the cursor, and move the cursor back one.
 winBackspace :: Window -> Window
 winBackspace win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} =
   moveCursor (-1,0) win' where
-    -- delete the character before the cursor, and move the cursor back one.
     bufLines' = Seq.adjust' (deleteChar $ x-1) (winTopLine + y) bufLines
+    win' = win {windowBuffer = Buffer bufLines'}
+
+-- delete the character at the cursor. If we were on the last character, 
+-- move the cursor back one
+winDel :: Window -> Window
+winDel win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} 
+  | x == lenCurrLine = moveCursor (-1,0) win'
+  | otherwise        = win'
+  where
+    currLineNumber = winTopLine + y
+    bufLines' = Seq.adjust' (deleteChar x) currLineNumber bufLines
+    lenCurrLine = T.length $ Seq.index bufLines' currLineNumber
     win' = win {windowBuffer = Buffer bufLines'}
 
 winInsertNewline :: Window -> Window
@@ -152,13 +166,12 @@ handleEvent = do
           -- ignore all other events
           _ -> Nothing
 
-        InsertMode -> maybe
-          (pure Continue)
-          handleInsertModeCmd
+        InsertMode -> maybe (pure Continue) handleInsertModeCmd
           case ev of
             EvKey KEsc [] -> Just CmdEnterNormalMode
             EvKey (KChar c) [] -> Just $ CmdInsertChar c
             EvKey KBS [] -> Just CmdBackspace
+            EvKey KDel [] -> Just CmdDel
             EvKey KEnter [] -> Just CmdInsertNewline
             _ -> Nothing
 

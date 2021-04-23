@@ -43,7 +43,7 @@ viewMainWindow Window {..}
     cursorAttr = defAttr `withBackColor` black `withForeColor` currLineColor
 
     viewLine :: Maybe Int -> Int -> Text -> Image
-    viewLine (Just cursorX) lineNumber l = let
+    viewLine (Just cursorX) _lineNumber l = let
         (left, right) = T.splitAt cursorX l
         in horizCat case T.uncons right of
           Just (cursorChar, right') ->
@@ -98,10 +98,6 @@ statusBar state showDiagnostics = translate 0 (h-1) $ horizCat
     diagnosticsWidget | showDiagnostics = viewDiagnostics state accentColor
                       | otherwise       = mempty
     rightPadding = char barBgAttr ' '
-
-    -- hardcoded for now - the length of the words NORMAL and INSERT plus 1
-    -- space either side
-    modeWidth = 8
 
 viewDiagnostics :: AppState -> Color -> Image
 viewDiagnostics state accentColor =

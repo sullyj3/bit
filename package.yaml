@@ -40,7 +40,7 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -Wunused-imports
+    - -Wall
     dependencies:
     - bit
 

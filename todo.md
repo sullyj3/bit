@@ -1,6 +1,4 @@
 # todo
-- [ ] refactor eventhandlers to be pure AppState -> AppState functions
-- [ ] enable del key in insert mode
 - [ ] store filepath in Buffer
 - [ ] lensify Window
 - [ ] make current line highlight full width
