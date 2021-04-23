@@ -18,6 +18,7 @@
 - [ ] load dhall settings file - provide expandTab, tabstop, shiftwidth, etc (or think about that design)
 - [ ] handle long lines correctly - wrapping, or horizontal scrolling
 - [ ] investigate sluggish scrolling, especially with long lines
+- [ ] tweak colors
 - [ ] map cursor position to buffer position
 - [ ] deal correctly with characters of width > 1
 - [ ] use a rope for each line (is this a terrible idea? lots of memory overhead. Maybe switch depending on line length)
