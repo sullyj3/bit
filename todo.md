@@ -1,5 +1,4 @@
 # todo
-- [ ] lensify Window
 - [ ] make current line highlight full width
 - [ ] redo cursor movement to interact with scrolling correctly
 - [ ] show open file in status bar (and whether it's saved)

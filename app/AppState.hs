@@ -39,11 +39,13 @@ data Rect = Rect { rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int) }
 -- TODO make a damn decision about whether to allow multiple windows,
 -- stick to tabs like Amp, or run as a server and let the WM/multiplexer handle
 -- it
-data Window = Window { windowBuffer :: Buffer
-                     , winTopLine :: Int
-                     , winCursorLocation :: (Int, Int)
-                     , winRect :: Rect 
-                     , winShowStartMessage :: Bool }
+data Window = Window { _windowBuffer :: Buffer
+                     , _winTopLine :: Int
+                     , _winCursorLocation :: (Int, Int)
+                     , _winRect :: Rect 
+                     , _winShowStartMessage :: Bool }
+
+makeLenses ''Window
 
 windowFromBuf :: Rect -> Buffer -> Bool -> Window
 windowFromBuf rect buf showStartMsg = Window buf 0 (0,0) rect showStartMsg
@@ -58,9 +60,9 @@ windowFromBuf rect buf showStartMsg = Window buf 0 (0,0) rect showStartMsg
 -- TODO should be able to place the cursor after the end of a line
 moveCursor :: (Int, Int) -> Window -> Window
 moveCursor (dx,dy) Window{ .. } =
-  let bufLines = bufferLines windowBuffer
-      Rect _ (_, winHeight) = winRect
-      (x, y) = winCursorLocation
+  let bufLines = bufferLines _windowBuffer
+      Rect _ (_, winHeight) = _winRect
+      (x, y) = _winCursorLocation
 
       y' = clamp 0 (y+dy) (winHeight - 1)
 
@@ -68,12 +70,12 @@ moveCursor (dx,dy) Window{ .. } =
       -- 
       -- this is still buggy, this clamp of linenumber is not reflected in the final y'
       -- not worth fixing til after I redo scroll/cursor movement
-      lineNumber' = clamp 0 (winTopLine + y') (Seq.length bufLines - 1)
+      lineNumber' = clamp 0 (_winTopLine + y') (Seq.length bufLines - 1)
       currentLine = bufLines `Seq.index` lineNumber'
 
       x' = clamp 0 (x+dx) (T.length currentLine-1)
       newCursorLocation = (x', y')
-   in Window windowBuffer winTopLine newCursorLocation winRect winShowStartMessage
+   in Window _windowBuffer _winTopLine newCursorLocation _winRect _winShowStartMessage
 
 
 scrollWindow :: Int -> Window -> Window

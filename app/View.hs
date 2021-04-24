@@ -29,13 +29,13 @@ viewMainWindow Window{..}
   | otherwise    = vertCat $ toList theLines <> emptyLines
   where
     howToQuit = string defAttr "press Q to exit"
-    (cursorX, cursorY) = winCursorLocation
+    (cursorX, cursorY) = _winCursorLocation
     -- TODO display filepath somewhere
-    (Buffer _ bufLines) = windowBuffer
-    (winWidth, winHeight) = winRect |> rectDimensions
-    showStartMsg = winShowStartMessage
+    (Buffer _ bufLines) = _windowBuffer
+    (winWidth, winHeight) = _winRect |> rectDimensions
+    showStartMsg = _winShowStartMessage
 
-    linesToDisplay = Seq.take winHeight $ Seq.drop winTopLine bufLines
+    linesToDisplay = Seq.take winHeight $ Seq.drop _winTopLine bufLines
 
     theLines :: Seq Image
     theLines = Seq.mapWithIndex
