@@ -35,6 +35,7 @@ mkInitialState vty AppArgs {..} = do
   bounds <- liftIO $ displayBounds $ outputIface vty
   let (w, h) = bounds
   -- h-1 leaves room for the status bar
+  -- TODO this is a bug waiting to happen, figure out something more principled
   let winRect = Rect (0, 0) (w, h -1)
   initialWindow <- mkInitialWindow winRect argsFileToOpen
   pure $ AppState bounds Nothing initialWindow NormalMode

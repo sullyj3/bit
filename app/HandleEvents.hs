@@ -155,7 +155,6 @@ handleEvent = do
             'Q' -> Just CmdQuit
             'i' -> Just CmdEnterInsertMode
             'o' -> Just $ CmdOpenFile "app/Main.hs"
-            -- todo: cursor movement
             'h' -> Just $ CmdMoveCursorRelative (-1, 0)
             'j' -> Just $ CmdMoveCursorRelative (0, 1)
             'k' -> Just $ CmdMoveCursorRelative (0, -1)
