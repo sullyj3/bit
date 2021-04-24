@@ -1,32 +1,28 @@
-{-# language LambdaCase #-}
-{-# language BlockArguments #-}
-{-# language NoImplicitPrelude #-}
-{-# language OverloadedStrings #-}
-{-# language RecordWildCards #-}
-{-# language TemplateHaskell #-}
-{-# language DataKinds #-}
-{-# language GADTs #-}
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
-import Relude
-
-import qualified Graphics.Vty as Vty
-import           Graphics.Vty hiding (update)
-import Control.Monad.RWS.Strict ( RWST(runRWST) )
-
-import Control.Exception (bracket)
-
-import Flow ( (.>) )
-import System.Environment (getArgs)
-
-import View ( viewAppState )
 import AppState
-import HandleEvents (handleEvent, ShouldQuit(..), App, openFile, askVty)
+import Control.Exception (bracket)
+import Control.Monad.RWS.Strict (RWST (runRWST))
+import Flow ((.>))
+import Graphics.Vty hiding (update)
+import qualified Graphics.Vty as Vty
+import HandleEvents (App, ShouldQuit (..), askVty, handleEvent, openFile)
+import Relude
+import System.Environment (getArgs)
+import View (viewAppState)
 
 ----------
 -- Main --
 ----------
 
-newtype AppArgs = AppArgs { argsFileToOpen :: Maybe FilePath }
+newtype AppArgs = AppArgs {argsFileToOpen :: Maybe FilePath}
 
 parseArgs :: [String] -> Maybe AppArgs
 parseArgs args = case args of
@@ -35,11 +31,11 @@ parseArgs args = case args of
   _ -> Nothing
 
 mkInitialState :: Vty -> AppArgs -> IO AppState
-mkInitialState vty AppArgs{..} = do
+mkInitialState vty AppArgs {..} = do
   bounds <- liftIO $ displayBounds $ outputIface vty
-  let (w,h) = bounds
+  let (w, h) = bounds
   -- h-1 leaves room for the status bar
-  let winRect = Rect (0,0) (w,h-1)
+  let winRect = Rect (0, 0) (w, h -1)
   initialWindow <- mkInitialWindow winRect argsFileToOpen
   pure $ AppState bounds Nothing initialWindow NormalMode
 
@@ -50,11 +46,11 @@ mkInitialWindow winRect = \case
     pure $ windowFromBuf winRect buf False
   Nothing -> pure $ windowFromBuf winRect newEmptyBuffer True
 
-
 main :: IO ()
 main = do
-  args <- getArgs >>= parseArgs
-    .> maybe (die "invalid args") pure
+  args <-
+    getArgs >>= parseArgs
+      .> maybe (die "invalid args") pure
 
   cfg <- standardIOConfig
   withVty cfg \vty -> do
@@ -63,9 +59,10 @@ main = do
     putStrLn "bye!"
   where
     loop :: App ()
-    loop = presentView >> handleEvent >>= \case
-      Continue -> loop
-      Quit     -> pure ()
+    loop =
+      presentView >> handleEvent >>= \case
+        Continue -> loop
+        Quit -> pure ()
 
     withVty :: Config -> (Vty -> IO c) -> IO c
     withVty cfg = bracket (mkVty cfg) shutdown
@@ -75,5 +72,3 @@ main = do
       vty <- askVty
       s <- get
       liftIO $ Vty.update vty (viewAppState s)
-
-
