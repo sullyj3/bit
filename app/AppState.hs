@@ -88,10 +88,21 @@ moveCursor (dx, dy) win@Window {..} =
       GT -> currLine' - winHeight + 1
 
 -- | return LT if line is above the viewport, GT if it's below, or Eq if it's within
+-- >>> lineInViewPort 1 0 (Rect (0,0) (10,10))
+-- LT
+--
+-- >>> lineInViewPort 0 0 (Rect (0,0) (10,10))
+-- EQ
+--
+-- >>> lineInViewPort 0 9 (Rect (0,0) (10,10))
+-- EQ
+--
+-- >>> lineInViewPort 0 10 (Rect (0,0) (10,10))
+-- GT
 lineInViewPort :: Int -> Int -> Rect -> Ordering
 lineInViewPort topLine lineNumber Rect {rectDimensions = (_, height)}
   | lineNumber < topLine = LT
-  | topLine < lineNumber && lineNumber < topLine + height = EQ
+  | (topLine <= lineNumber) && lineNumber < topLine + height = EQ
   | otherwise = GT
 
 -- | ensures cursor remains within the viewport

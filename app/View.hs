@@ -1,5 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -112,6 +113,9 @@ statusBar appState showDiagnostics =
 
 viewDiagnostics :: AppState -> Color -> Image
 viewDiagnostics appState accentColor =
-  string (defAttr `withForeColor` white `withBackColor` accentColor) cursorLoc
+  string (defAttr `withForeColor` white `withBackColor` accentColor) diagnostics
   where
-    cursorLoc = show $ appState ^. stateWindow . winCursorLocation
+    diagnostics = "winTopLine: " ++ topLine ++ " | " ++ cursorLoc
+    Window {_winTopLine, _winCursorLocation} = appState ^. stateWindow
+    topLine = show _winTopLine
+    cursorLoc = show _winCursorLocation
