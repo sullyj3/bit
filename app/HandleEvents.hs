@@ -76,32 +76,32 @@ handleInsertModeCmd = (Continue <$) . \case
   CmdDel             -> stateWindow %= winDel
 
 winInsertChar :: Char -> Window -> Window
-winInsertChar c win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} =
+winInsertChar c win@Window {winCursorLocation = (x,y), windowBuffer = Buffer fp bufLines, ..} =
   moveCursor (1,0) win' where
     bufLines' = Seq.adjust' (insertChar c x) (winTopLine + y) bufLines
-    win' = win {windowBuffer = Buffer bufLines'}
+    win' = win {windowBuffer = Buffer fp bufLines'}
 
 -- delete the character before the cursor, and move the cursor back one.
 winBackspace :: Window -> Window
-winBackspace win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} =
+winBackspace win@Window {winCursorLocation = (x,y), windowBuffer = Buffer fp bufLines, ..} =
   moveCursor (-1,0) win' where
     bufLines' = Seq.adjust' (deleteChar $ x-1) (winTopLine + y) bufLines
-    win' = win {windowBuffer = Buffer bufLines'}
+    win' = win {windowBuffer = Buffer fp bufLines' }
 
 -- delete the character at the cursor. If we were on the last character, 
 -- move the cursor back one
 winDel :: Window -> Window
-winDel win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} 
+winDel win@Window {winCursorLocation = (x,y), windowBuffer = Buffer fp bufLines, ..} 
   | x == lenCurrLine = moveCursor (-1,0) win'
   | otherwise        = win'
   where
     currLineNumber = winTopLine + y
     bufLines' = Seq.adjust' (deleteChar x) currLineNumber bufLines
     lenCurrLine = T.length $ Seq.index bufLines' currLineNumber
-    win' = win {windowBuffer = Buffer bufLines'}
+    win' = win {windowBuffer = Buffer fp bufLines'}
 
 winInsertNewline :: Window -> Window
-winInsertNewline win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bufLines, ..} =
+winInsertNewline win@Window {winCursorLocation = (x,y), windowBuffer = Buffer fp bufLines, ..} =
   moveCursor (0, 1) win' where
     currLineNumber = winTopLine + y
     currLine = bufLines `Seq.index` currLineNumber
@@ -110,7 +110,7 @@ winInsertNewline win@Window {winCursorLocation = (x,y), windowBuffer = Buffer bu
     -- first element of bottom is the current line, we drop it and replace with
     -- the two halves of the split line
     bufLines' = top <> Seq.fromList [l,r] <> Seq.drop 1 bottom
-    win' = win {windowBuffer = Buffer bufLines'}
+    win' = win {windowBuffer = Buffer fp bufLines'}
 
 
 -- does nothing if i ∉ [0, T.length txt)
@@ -177,4 +177,4 @@ handleEvent = do
 
 
 openFile :: FilePath -> IO Buffer
-openFile path = Buffer . Seq.fromList . lines <$> readFileText path
+openFile path = Buffer (Just path) . Seq.fromList . lines <$> readFileText path

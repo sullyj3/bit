@@ -22,13 +22,14 @@ import qualified Data.Text as T
 -- State --
 -----------
 
-newtype Buffer = Buffer { bufferLines :: Seq Text }
+data Buffer = Buffer { bufferFilePath :: Maybe FilePath
+                     , bufferLines :: Seq Text }
 
 newEmptyBuffer :: Buffer
-newEmptyBuffer = Buffer $ Seq.singleton mempty
+newEmptyBuffer = Buffer Nothing (Seq.singleton mempty)
 
 bufferLineCount :: Buffer -> Int
-bufferLineCount (Buffer bLines) = Seq.length bLines
+bufferLineCount (Buffer _ bLines) = Seq.length bLines
 
 data Rect = Rect { rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int) }
   deriving Show

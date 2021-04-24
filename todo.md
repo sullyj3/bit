@@ -1,5 +1,4 @@
 # todo
-- [ ] store filepath in Buffer
 - [ ] lensify Window
 - [ ] make current line highlight full width
 - [ ] redo cursor movement to interact with scrolling correctly
