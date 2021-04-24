@@ -14,6 +14,7 @@ import AppState
 import Control.Monad.RWS.Strict (RWST)
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
+import Flow ((|>))
 import Graphics.Vty hiding (update)
 import Lens.Micro.Platform
 import Relude
@@ -73,40 +74,46 @@ handleInsertModeCmd =
     CmdDel -> stateWindow %= winDel
 
 winInsertChar :: Char -> Window -> Window
-winInsertChar c win@Window {_winCursorLocation = (x, y), _windowBuffer = Buffer fp bufLines, ..} =
+winInsertChar c win@Window {_windowBuffer = Buffer fp bufLines, ..} =
   moveCursor (1, 0) win'
   where
-    bufLines' = Seq.adjust' (insertChar c x) (_winTopLine + y) bufLines
+    CursorLocation curCol curLine = win ^. winCursorLocation
+
+    bufLines' = Seq.adjust' (insertChar c curCol) curLine bufLines
     win' = win {_windowBuffer = Buffer fp bufLines'}
 
 -- delete the character before the cursor, and move the cursor back one.
 winBackspace :: Window -> Window
-winBackspace win@Window {_winCursorLocation = (x, y), _windowBuffer = Buffer fp bufLines, ..} =
+winBackspace win@Window {_windowBuffer = Buffer fp bufLines} =
   moveCursor (-1, 0) win'
   where
-    bufLines' = Seq.adjust' (deleteChar $ x -1) (_winTopLine + y) bufLines
-    win' = win {_windowBuffer = Buffer fp bufLines'}
+    CursorLocation curCol curLine = win ^. winCursorLocation
+    -- if the cursor is at column 0, deleteChar (-1) will be a no-op
+    -- TODO allow backspace to span lines
+    bufLines' = Seq.adjust' (deleteChar $ curCol - 1) curLine bufLines
+    win' = win |> windowBuffer .~ Buffer fp bufLines'
 
 -- delete the character at the cursor. If we were on the last character,
 -- move the cursor back one
 winDel :: Window -> Window
-winDel win@Window {_winCursorLocation = (x, y), _windowBuffer = Buffer fp bufLines, ..}
-  | x == lenCurrLine = moveCursor (-1, 0) win'
+winDel win@Window {_windowBuffer = Buffer fp bufLines}
+  | curCol == lenCurrLine = moveCursor (-1, 0) win'
   | otherwise = win'
   where
-    currLineNumber = _winTopLine + y
-    bufLines' = Seq.adjust' (deleteChar x) currLineNumber bufLines
-    lenCurrLine = T.length $ Seq.index bufLines' currLineNumber
+    CursorLocation curCol curLine = win ^. winCursorLocation
+
+    bufLines' = Seq.adjust' (deleteChar curCol) curLine bufLines
+    lenCurrLine = T.length $ Seq.index bufLines' curLine
     win' = win {_windowBuffer = Buffer fp bufLines'}
 
 winInsertNewline :: Window -> Window
-winInsertNewline win@Window {_winCursorLocation = (x, y), _windowBuffer = Buffer fp bufLines, ..} =
+winInsertNewline win@Window {_windowBuffer = Buffer fp bufLines} =
   moveCursor (0, 1) win'
   where
-    currLineNumber = _winTopLine + y
-    currLine = bufLines `Seq.index` currLineNumber
-    (l, r) = T.splitAt x currLine
-    (top, bottom) = Seq.splitAt currLineNumber bufLines
+    CursorLocation curCol curLine = win ^. winCursorLocation
+    line = bufLines `Seq.index` curLine
+    (l, r) = T.splitAt curCol line
+    (top, bottom) = Seq.splitAt curLine bufLines
     -- first element of bottom is the current line, we drop it and replace with
     -- the two halves of the split line
     bufLines' = top <> Seq.fromList [l, r] <> Seq.drop 1 bottom

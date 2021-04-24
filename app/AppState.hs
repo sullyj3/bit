@@ -11,8 +11,9 @@ module AppState where
 
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
+import Flow ((<|), (|>))
 import Graphics.Vty (Event)
-import Lens.Micro.Platform (makeLenses)
+import Lens.Micro.Platform (makeLenses, (.~))
 import Relude
 
 -----------
@@ -30,10 +31,19 @@ newEmptyBuffer = Buffer Nothing (Seq.singleton mempty)
 bufferLineCount :: Buffer -> Int
 bufferLineCount (Buffer _ bLines) = Seq.length bLines
 
-data Rect = Rect {rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int)}
+data Rect = Rect
+  { rectTopLeft :: (Int, Int),
+    rectDimensions :: (Int, Int)
+  }
   deriving (Show)
 
--- left is a window with no buffer
+data CursorLocation = CursorLocation
+  { _cursorColumn :: Int,
+    _cursorLine :: Int
+  }
+  deriving (Show)
+
+makeLenses ''CursorLocation
 
 -- TODO make a damn decision about whether to allow multiple windows,
 -- stick to tabs like Amp, or run as a server and let the WM/multiplexer handle
@@ -41,47 +51,68 @@ data Rect = Rect {rectTopLeft :: (Int, Int), rectDimensions :: (Int, Int)}
 data Window = Window
   { _windowBuffer :: Buffer,
     _winTopLine :: Int,
-    _winCursorLocation :: (Int, Int),
+    _winCursorLocation :: CursorLocation,
     _winRect :: Rect,
     _winShowStartMessage :: Bool
   }
 
 makeLenses ''Window
 
+cursorLocTop :: CursorLocation
+cursorLocTop = CursorLocation 0 0
+
 windowFromBuf :: Rect -> Buffer -> Bool -> Window
-windowFromBuf rect buf showStartMsg = Window buf 0 (0, 0) rect showStartMsg
+windowFromBuf rect buf showStartMsg = Window buf 0 cursorLocTop rect showStartMsg
 
--- This function is safe at least when called - ensures the cursor stays inside the window, and doesn't move beyond the end of a line.
---
--- however if we scroll without moving the cursor, the cursor can end up in an invalid state, focusing on a character that doesn't exist
---
--- TODO: rethink interaction between cursor movement and scrolling.
--- probably the coordinates in the buffer should be stored in the state, rather than the coordinates in the window.
--- That means the cursor would stay on the same character when scrolling automatically
--- TODO should be able to place the cursor after the end of a line
+-- This function is safe - ensures the cursor stays inside the buffer, and doesn't move beyond the end of a line.
+-- It scrolls the viewPoint to keep the cursor in view if necessary
 moveCursor :: (Int, Int) -> Window -> Window
-moveCursor (dx, dy) Window {..} =
-  let bufLines = bufferLines _windowBuffer
-      Rect _ (_, winHeight) = _winRect
-      (x, y) = _winCursorLocation
+moveCursor (dx, dy) win@Window {..} =
+  win |> winCursorLocation .~ newCursorLocation
+    |> winTopLine .~ topLine'
+  where
+    bufLines = bufferLines _windowBuffer
+    CursorLocation currCol currLine = _winCursorLocation
 
-      y' = clamp 0 (y + dy) (winHeight - 1)
+    currLine' = clamp 0 (currLine + dy) (bufferLineCount _windowBuffer - 1)
+    currentLine = bufLines `Seq.index` currLine'
 
-      -- ensure new lineNumber' is a line that exists
-      --
-      -- this is still buggy, this clamp of linenumber is not reflected in the final y'
-      -- not worth fixing til after I redo scroll/cursor movement
-      lineNumber' = clamp 0 (_winTopLine + y') (Seq.length bufLines - 1)
-      currentLine = bufLines `Seq.index` lineNumber'
+    currCol' = clamp 0 (currCol + dx) (T.length currentLine -1)
+    newCursorLocation = CursorLocation currCol' currLine'
 
-      x' = clamp 0 (x + dx) (T.length currentLine -1)
-      newCursorLocation = (x', y')
-   in Window _windowBuffer _winTopLine newCursorLocation _winRect _winShowStartMessage
+    Rect _ (_, winHeight) = _winRect
 
+    topLine' = case lineInViewPort _winTopLine currLine' _winRect of
+      LT -> currLine'
+      EQ -> _winTopLine
+      GT -> currLine' - winHeight + 1
+
+-- | return LT if line is above the viewport, GT if it's below, or Eq if it's within
+lineInViewPort :: Int -> Int -> Rect -> Ordering
+lineInViewPort topLine lineNumber Rect {rectDimensions = (_, height)}
+  | lineNumber < topLine = LT
+  | topLine < lineNumber && lineNumber < topLine + height = EQ
+  | otherwise = GT
+
+-- | ensures cursor remains within the viewport
 scrollWindow :: Int -> Window -> Window
-scrollWindow n (Window buf winTopLine cursor r ssm) =
-  let newTopLine = clamp 0 (winTopLine + n) (bufferLineCount buf)
-   in Window buf newTopLine cursor r ssm
+scrollWindow n (Window buf winTopLine cursor rect ssm) = Window buf newTopLine cursor' rect ssm
+  where
+    newTopLine = clamp 0 (winTopLine + n) (bufferLineCount buf)
+
+    CursorLocation curCol curLine = cursor
+    cursor' = case lineInViewPort newTopLine curLine rect of
+      EQ -> cursor
+      -- we've scrolled the cursor out of view, so we clamp the cursor to the
+      -- viewport, then clamp to the length of the new line.
+      _ -> CursorLocation curCol' curLine'
+        where
+          Rect _ (_, winHeight) = rect
+          curLine' = clamp newTopLine curLine (newTopLine + winHeight)
+          curCol' = clamp 0 curCol lineWidth
+
+          lineWidth :: Int
+          lineWidth = T.length <| bufferLines buf `Seq.index` curLine'
 
 clamp :: Ord a => a -> a -> a -> a
 clamp a x b = max a (min x b)

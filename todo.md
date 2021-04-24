@@ -1,5 +1,8 @@
 # todo
+## In progress
 - [ ] redo cursor movement to interact with scrolling correctly
+
+## todo
 - [ ] show open file in status bar (and whether it's saved)
 - [ ] saving back to same file
 - [ ] saving to arbitrary location

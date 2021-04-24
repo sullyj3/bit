@@ -26,7 +26,7 @@ viewMainWindow Window {..}
   | otherwise = vertCat $ toList theLines <> emptyLines
   where
     howToQuit = string defAttr "press Q to exit"
-    (cursorX, cursorY) = _winCursorLocation
+    CursorLocation curCol curLine = _winCursorLocation
     -- TODO display filepath somewhere
     (Buffer _ bufLines) = _windowBuffer
     (winWidth, winHeight) = _winRect |> rectDimensions
@@ -39,7 +39,7 @@ viewMainWindow Window {..}
       Seq.mapWithIndex
         ( \i l ->
             viewLine
-              (if i == cursorY then Just cursorX else Nothing)
+              (if _winTopLine + i == curLine then Just curCol else Nothing)
               winWidth
               i
               l
@@ -112,10 +112,6 @@ statusBar appState showDiagnostics =
 
 viewDiagnostics :: AppState -> Color -> Image
 viewDiagnostics appState accentColor =
-  string (defAttr `withForeColor` white `withBackColor` accentColor) eventStr
+  string (defAttr `withForeColor` white `withBackColor` accentColor) cursorLoc
   where
-    eventStr =
-      maybe
-        "no events yet"
-        (\e -> "Last event: " ++ show e)
-        (appState ^. stateLastEvent)
+    cursorLoc = show $ appState ^. stateWindow . winCursorLocation
