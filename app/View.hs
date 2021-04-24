@@ -40,6 +40,7 @@ viewMainWindow Window{..}
     theLines :: Seq Image
     theLines = Seq.mapWithIndex
       (\i l -> viewLine (if i==cursorY then Just cursorX else Nothing)
+                        winWidth
                         i
                         l)
       linesToDisplay
@@ -48,15 +49,16 @@ viewMainWindow Window{..}
     emptyLines = replicate emptyHeight
       (text emptyLineAttr $ L.fromStrict $ T.replicate winWidth " ")
 
-viewLine :: Maybe Int -> Int -> Text -> Image
-viewLine mCursorX _lineNumber l = case mCursorX of
+viewLine :: Maybe Int -> Int -> Int -> Text -> Image
+viewLine mCursorX windowWidth _lineNumber l = case mCursorX of
   Just cursorX -> let
     (left, right) = T.splitAt cursorX l
     in horizCat case T.uncons right of
       Just (cursorChar, right') ->
         [ text' currLineAttr left
         , char cursorAttr cursorChar
-        , text' currLineAttr right' ]
+        , text' currLineAttr right'
+        , text' currLineAttr (T.replicate remainingWidth " ")]
       -- assuming cursorX < length l, we only get nothing if the line is empty
       Nothing -> [ char cursorAttr ' ' ]
   Nothing -> text' defAttr l
@@ -66,6 +68,8 @@ viewLine mCursorX _lineNumber l = case mCursorX of
 
     currLineAttr = defAttr `withBackColor` currLineColor
     cursorAttr = defAttr `withBackColor` black `withForeColor` currLineColor
+
+    remainingWidth = windowWidth - T.length l
 
 
 
