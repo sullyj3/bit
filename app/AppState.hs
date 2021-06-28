@@ -104,8 +104,14 @@ moveCursor (dx, dy) win@Window {..} =
 -- GT
 lineInViewPort :: Int -> Int -> Rect -> Ordering
 lineInViewPort topLine lineNumber Rect {rectDimensions = (_, height)}
-  | lineNumber < topLine = LT
-  | (topLine <= lineNumber) && lineNumber < topLine + height = EQ
+  = compareRange lineNumber (topLine, topLine+height)
+
+
+-- check whether an int is less than, within, or greater than a half-open interval
+compareRange :: Int -> (Int, Int) -> Ordering
+compareRange x (a,b)
+  | x < a = LT
+  | x < b = EQ
   | otherwise = GT
 
 -- | ensures cursor remains within the viewport
