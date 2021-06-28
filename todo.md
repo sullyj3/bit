@@ -2,8 +2,6 @@
 ## In progress
 
 ## todo
-- [ ] add general facility for displaying a temporary message in status line
-- [ ] display success message on save
 - [ ] add general way of getting input from the user, eg command line, filename input
 - [ ] saving to arbitrary location
 - [ ] creating a new buffer
