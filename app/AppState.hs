@@ -13,7 +13,7 @@ import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 import Flow ((<|), (|>))
 import Graphics.Vty (Event)
-import Lens.Micro.Platform (makeLenses, (.~))
+import Lens.Micro.Platform (makeLenses, (.~), (^.))
 import Relude
 
 -----------
@@ -74,16 +74,16 @@ moveCursor (dx, dy) win@Window {..} =
   win |> winCursorLocation .~ newCursorLocation
     |> winTopLine .~ topLine'
   where
-    bufLines = _bufferLines _windowBuffer
-    CursorLocation currCol currLine = _winCursorLocation
+    bufLines = win ^. windowBuffer . bufferLines
+    CursorLocation currCol currLine = win ^. winCursorLocation
 
-    currLine' = clamp 0 (currLine + dy) (bufferLineCount _windowBuffer - 1)
+    currLine' = clamp 0 (currLine + dy) (bufferLineCount (win ^. windowBuffer) - 1)
     currentLine = bufLines `Seq.index` currLine'
 
     currCol' = clamp 0 (currCol + dx) (T.length currentLine -1)
     newCursorLocation = CursorLocation currCol' currLine'
 
-    Rect _ (_, winHeight) = _winRect
+    Rect _ (_, winHeight) = win ^. winRect
 
     topLine' = case lineInViewPort _winTopLine currLine' _winRect of
       LT -> currLine'
