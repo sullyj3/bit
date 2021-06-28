@@ -41,6 +41,8 @@ data Command a where
   CmdBackspace :: Command 'InsertModeCmd
   CmdInsertNewline :: Command 'InsertModeCmd
   CmdDel :: Command 'InsertModeCmd
+  CmdSave :: Command 'NormalModeCmd
+  --CmdSaveAs :: Command 'NormalModeCmd
 
 handleNormalModeCmd :: Command 'NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
@@ -57,6 +59,21 @@ handleNormalModeCmd = \case
     let window = windowFromBuf (rectFullScreen dims) buf False
     stateWindow .= window
     pure Continue
+  CmdSave -> do
+    Buffer {..} <- use (stateWindow . windowBuffer)
+    case _bufferFilePath of
+      Nothing -> do
+        -- TODO: display some kind of error message that there is 
+        -- no filename associated with buffer
+        pure Continue
+      Just path -> do
+        liftIO $ saveLinesToPath path _bufferLines
+        pure Continue
+
+-- TODO: make more efficient using streamly or something
+saveLinesToPath :: FilePath -> Seq Text -> IO ()
+saveLinesToPath path theLines = writeFileText path (unlines . toList $ theLines)
+
 
 rectFullScreen :: (Int, Int) -> Rect
 rectFullScreen (w, h) = Rect (0, 0) (w, h -1)
@@ -161,6 +178,7 @@ handleEvent = do
             'l' -> Just $ CmdMoveCursorRelative (1, 0)
             'm' -> Just $ CmdScroll 1
             ',' -> Just $ CmdScroll (-1)
+            's' -> Just $ CmdSave
             -- ignore all other chars
             _ -> Nothing
           -- ignore all other keys
