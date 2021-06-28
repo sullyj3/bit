@@ -68,6 +68,7 @@ handleNormalModeCmd = \case
         pure Continue
       Just path -> do
         liftIO $ saveLinesToPath path _bufferLines
+        setStatusMessage $ "saved to " <> T.pack path
         stateWindow . windowBuffer . bufferChanged .= False
         pure Continue
 
@@ -153,6 +154,12 @@ insertChar c i txt = l <> T.singleton c <> r
 data ShouldQuit = Quit | Continue
   deriving (Show)
 
+removeTemporaryMessage :: App ()
+removeTemporaryMessage = stateStatusMessage .= Nothing
+
+setStatusMessage :: Text -> App ()
+setStatusMessage t = stateStatusMessage .= Just t
+
 -- return whether we should continue
 handleEvent :: App ShouldQuit
 handleEvent = do
@@ -160,6 +167,7 @@ handleEvent = do
 
   ev <- liftIO $ nextEvent vty
   stateLastEvent ?= ev
+  removeTemporaryMessage
 
   case ev of
     EvResize w h -> do

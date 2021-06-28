@@ -38,7 +38,7 @@ mkInitialState vty AppArgs {..} = do
   -- TODO this is a bug waiting to happen, figure out something more principled
   let winRect = Rect (0, 0) (w, h -1)
   initialWindow <- mkInitialWindow winRect argsFileToOpen
-  pure $ AppState bounds Nothing initialWindow NormalMode (Just "test message")
+  pure $ AppState bounds Nothing initialWindow NormalMode Nothing
 
 mkInitialWindow :: Rect -> Maybe FilePath -> IO Window
 mkInitialWindow winRect = \case
