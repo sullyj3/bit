@@ -143,7 +143,9 @@ data AppState = AppState
   { _stateDimensions :: (Int, Int),
     _stateLastEvent :: Maybe Event,
     _stateWindow :: Window,
-    _stateMode :: EditorMode
+    _stateMode :: EditorMode,
+    -- a temporary message to be displayed in the status bar. Disappears after input
+    _stateStatusMessage :: Maybe Text
   }
 
 makeLenses ''AppState
