@@ -2,7 +2,7 @@
 ## In progress
 
 ## todo
-- [ ] show whether current file is saved
+- lensify Buffer
 - [ ] saving back to same file
 - [ ] saving to arbitrary location
 - [ ] creating a new buffer

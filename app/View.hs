@@ -112,9 +112,17 @@ statusBar appState showDiagnostics =
     --  | otherwise = mempty
 
     currFileWidget :: Image
-    currFileWidget = case appState ^. (stateWindow . windowBuffer) |> bufferFilePath of
-      Just bufName -> string defAttr bufName
-      Nothing -> string defAttr "new file"
+    currFileWidget = string defAttr $ path <> modifiedString
+      where
+        Buffer {..} = appState ^. (stateWindow . windowBuffer)
+
+        path = fromMaybe "new file" bufferFilePath
+
+        modifiedString :: String
+        modifiedString | bufferChanged = "*"
+                       | otherwise = ""
+
+    
 
     rightPadding = char barBgAttr ' '
 
