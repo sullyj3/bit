@@ -68,6 +68,7 @@ handleNormalModeCmd = \case
         pure Continue
       Just path -> do
         liftIO $ saveLinesToPath path _bufferLines
+        stateWindow . windowBuffer . bufferChanged .= False
         pure Continue
 
 -- TODO: make more efficient using streamly or something
