@@ -28,8 +28,7 @@ viewMainWindow Window {..}
   where
     howToQuit = string defAttr "press Q to exit"
     CursorLocation curCol curLine = _winCursorLocation
-    -- TODO display filepath somewhere
-    (Buffer _ bufLines) = _windowBuffer
+    (Buffer _ bufLines _) = _windowBuffer
     (winWidth, winHeight) = _winRect |> rectDimensions
     showStartMsg = _winShowStartMessage
 

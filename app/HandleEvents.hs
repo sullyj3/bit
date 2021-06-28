@@ -74,29 +74,29 @@ handleInsertModeCmd =
     CmdDel -> stateWindow %= winDel
 
 winInsertChar :: Char -> Window -> Window
-winInsertChar c win@Window {_windowBuffer = Buffer fp bufLines, ..} =
+winInsertChar c win@Window {_windowBuffer = Buffer fp bufLines _ } =
   moveCursor (1, 0) win'
   where
     CursorLocation curCol curLine = win ^. winCursorLocation
 
     bufLines' = Seq.adjust' (insertChar c curCol) curLine bufLines
-    win' = win {_windowBuffer = Buffer fp bufLines'}
+    win' = win {_windowBuffer = Buffer fp bufLines' True}
 
 -- delete the character before the cursor, and move the cursor back one.
 winBackspace :: Window -> Window
-winBackspace win@Window {_windowBuffer = Buffer fp bufLines} =
+winBackspace win@Window {_windowBuffer = Buffer fp bufLines _} =
   moveCursor (-1, 0) win'
   where
     CursorLocation curCol curLine = win ^. winCursorLocation
     -- if the cursor is at column 0, deleteChar (-1) will be a no-op
     -- TODO allow backspace to span lines
     bufLines' = Seq.adjust' (deleteChar $ curCol - 1) curLine bufLines
-    win' = win |> windowBuffer .~ Buffer fp bufLines'
+    win' = win |> windowBuffer .~ Buffer fp bufLines' True
 
 -- delete the character at the cursor. If we were on the last character,
 -- move the cursor back one
 winDel :: Window -> Window
-winDel win@Window {_windowBuffer = Buffer fp bufLines}
+winDel win@Window {_windowBuffer = Buffer fp bufLines _}
   | curCol == lenCurrLine = moveCursor (-1, 0) win'
   | otherwise = win'
   where
@@ -104,10 +104,10 @@ winDel win@Window {_windowBuffer = Buffer fp bufLines}
 
     bufLines' = Seq.adjust' (deleteChar curCol) curLine bufLines
     lenCurrLine = T.length $ Seq.index bufLines' curLine
-    win' = win {_windowBuffer = Buffer fp bufLines'}
+    win' = win {_windowBuffer = Buffer fp bufLines' True}
 
 winInsertNewline :: Window -> Window
-winInsertNewline win@Window {_windowBuffer = Buffer fp bufLines} =
+winInsertNewline win@Window {_windowBuffer = Buffer fp bufLines _} =
   moveCursor (0, 1) win'
   where
     CursorLocation curCol curLine = win ^. winCursorLocation
@@ -117,7 +117,7 @@ winInsertNewline win@Window {_windowBuffer = Buffer fp bufLines} =
     -- first element of bottom is the current line, we drop it and replace with
     -- the two halves of the split line
     bufLines' = top <> Seq.fromList [l, r] <> Seq.drop 1 bottom
-    win' = win {_windowBuffer = Buffer fp bufLines'}
+    win' = win {_windowBuffer = Buffer fp bufLines' True}
 
 -- does nothing if i ∉ [0, T.length txt)
 deleteChar :: Int -> Text -> Text
@@ -179,4 +179,6 @@ handleEvent = do
             _ -> Nothing
 
 openFile :: FilePath -> IO Buffer
-openFile path = Buffer (Just path) . Seq.fromList . lines <$> readFileText path
+openFile path = do
+  theLines <- Seq.fromList . lines <$> readFileText path
+  pure $ Buffer (Just path) theLines False

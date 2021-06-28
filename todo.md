@@ -2,7 +2,7 @@
 ## In progress
 
 ## todo
-- [ ] show open file in status bar (and whether it's saved)
+- [ ] show whether current file is saved
 - [ ] saving back to same file
 - [ ] saving to arbitrary location
 - [ ] creating a new buffer

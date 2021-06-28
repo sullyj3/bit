@@ -22,14 +22,15 @@ import Relude
 
 data Buffer = Buffer
   { bufferFilePath :: Maybe FilePath,
-    bufferLines :: Seq Text
+    bufferLines :: Seq Text,
+    bufferChanged :: Bool
   }
 
 newEmptyBuffer :: Buffer
-newEmptyBuffer = Buffer Nothing (Seq.singleton mempty)
+newEmptyBuffer = Buffer Nothing (Seq.singleton mempty) False
 
 bufferLineCount :: Buffer -> Int
-bufferLineCount (Buffer _ bLines) = Seq.length bLines
+bufferLineCount (Buffer _ bLines _) = Seq.length bLines
 
 data Rect = Rect
   { rectTopLeft :: (Int, Int),
