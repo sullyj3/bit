@@ -86,7 +86,7 @@ statusBar :: AppState -> Bool -> Image
 statusBar appState showDiagnostics =
   translate 0 (h -1) $
     horizCat
-      [modeWidget, middlePadding, diagnosticsWidget, rightPadding]
+      [modeWidget, middlePadding, currFileWidget, rightPadding]
   where
     (w, h) = appState ^. stateDimensions
 
@@ -102,13 +102,21 @@ statusBar appState showDiagnostics =
       NormalMode -> "NORMAL"
       InsertMode -> "INSERT"
 
-    remainingSpace = w - imageWidth modeWidget - imageWidth diagnosticsWidget
+    --remainingSpace = w - imageWidth modeWidget - imageWidth diagnosticsWidget
+    remainingSpace = w - imageWidth modeWidget - imageWidth currFileWidget
 
     modeWidget = string modeAttr $ " " <> showMode (appState ^. stateMode) <> " "
     middlePadding = string barBgAttr $ replicate (remainingSpace - 1) ' '
-    diagnosticsWidget
-      | showDiagnostics = viewDiagnostics appState accentColor
-      | otherwise = mempty
+
+    --diagnosticsWidget
+    --  | showDiagnostics = viewDiagnostics appState accentColor
+    --  | otherwise = mempty
+
+    currFileWidget :: Image
+    currFileWidget = case appState ^. (stateWindow . windowBuffer) |> bufferFilePath of
+      Just bufName -> string defAttr bufName
+      Nothing -> string defAttr "new file"
+
     rightPadding = char barBgAttr ' '
 
 viewDiagnostics :: AppState -> Color -> Image
