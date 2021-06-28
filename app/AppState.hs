@@ -21,10 +21,12 @@ import Relude
 -----------
 
 data Buffer = Buffer
-  { bufferFilePath :: Maybe FilePath,
-    bufferLines :: Seq Text,
-    bufferChanged :: Bool
+  { _bufferFilePath :: Maybe FilePath,
+    _bufferLines :: Seq Text,
+    _bufferChanged :: Bool
   }
+
+makeLenses ''Buffer
 
 newEmptyBuffer :: Buffer
 newEmptyBuffer = Buffer Nothing (Seq.singleton mempty) False
@@ -72,7 +74,7 @@ moveCursor (dx, dy) win@Window {..} =
   win |> winCursorLocation .~ newCursorLocation
     |> winTopLine .~ topLine'
   where
-    bufLines = bufferLines _windowBuffer
+    bufLines = _bufferLines _windowBuffer
     CursorLocation currCol currLine = _winCursorLocation
 
     currLine' = clamp 0 (currLine + dy) (bufferLineCount _windowBuffer - 1)
@@ -124,7 +126,7 @@ scrollWindow n (Window buf winTopLine cursor rect ssm) = Window buf newTopLine c
           curCol' = clamp 0 curCol lineWidth
 
           lineWidth :: Int
-          lineWidth = T.length <| bufferLines buf `Seq.index` curLine'
+          lineWidth = T.length <| _bufferLines buf `Seq.index` curLine'
 
 clamp :: Ord a => a -> a -> a -> a
 clamp a x b = max a (min x b)

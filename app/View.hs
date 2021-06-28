@@ -116,10 +116,10 @@ statusBar appState showDiagnostics =
       where
         Buffer {..} = appState ^. (stateWindow . windowBuffer)
 
-        path = fromMaybe "new file" bufferFilePath
+        path = fromMaybe "new file" _bufferFilePath
 
         modifiedString :: String
-        modifiedString | bufferChanged = "*"
+        modifiedString | _bufferChanged = "*"
                        | otherwise = ""
 
     
