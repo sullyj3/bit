@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -181,36 +182,64 @@ handleEvent = do
       stateDimensions .= (w, h)
       pure Continue
     _ ->
-      use stateMode >>= \case
-        NormalMode -> maybe (pure Continue) handleNormalModeCmd case ev of
-          EvKey (KChar c) [] -> case c of
-            'Q' -> Just CmdQuit
-            'i' -> Just CmdEnterInsertMode
-            'o' -> Just $ CmdOpenFile "app/Main.hs"
-            'h' -> Just $ CmdMoveCursorRelative (-1, 0)
-            'j' -> Just $ CmdMoveCursorRelative (0, 1)
-            'k' -> Just $ CmdMoveCursorRelative (0, -1)
-            'l' -> Just $ CmdMoveCursorRelative (1, 0)
-            'm' -> Just $ CmdScroll 1
-            ',' -> Just $ CmdScroll (-1)
-            's' -> Just $ CmdSave
-            'S' -> Just $ CmdSaveAs
-            -- ignore all other chars
-            _ -> Nothing
-          -- ignore all other keys
-          EvKey _ _ -> Nothing
-          -- ignore all other events
-          _ -> Nothing
-        InsertMode -> maybe
-          (pure Continue)
-          handleInsertModeCmd
-          case ev of
-            EvKey KEsc [] -> Just CmdEnterNormalMode
-            EvKey (KChar c) [] -> Just $ CmdInsertChar c
-            EvKey KBS [] -> Just CmdBackspace
-            EvKey KDel [] -> Just CmdDel
-            EvKey KEnter [] -> Just CmdInsertNewline
-            _ -> Nothing
+      -- when we have more than two possible input focusses we'll need some 
+      -- sort of focus system
+      use stateCurrInputWidget >>= \case
+        Nothing -> handleEventWindow ev
+        Just iw -> handleEventInputWidget iw ev
+
+handleEventInputWidget :: InputWidget -> Event -> App ShouldQuit
+handleEventInputWidget iw@InputWidget {..} ev = case ev of
+  EvKey (KChar c) [] -> do
+    let contents' = _inputWidgetContents <> T.singleton c
+    stateCurrInputWidget .= Just (iw {_inputWidgetContents = contents'})
+    pure Continue
+  EvKey KEnter [] -> do
+    bufLines <- use $ stateWindow . windowBuffer . bufferLines
+    if T.null _inputWidgetContents 
+      then do setStatusMessage "Can't save to empty path"
+      else do let path = _inputWidgetContents
+              liftIO $ saveLinesToPath (T.unpack path) bufLines
+              setStatusMessage $ "Saved to " <> path
+    stateCurrInputWidget .= Nothing
+    pure Continue
+  EvKey KEsc [] -> do
+    stateCurrInputWidget .= Nothing
+    pure Continue
+  _ -> pure Continue
+
+
+handleEventWindow :: Event -> App ShouldQuit
+handleEventWindow ev = use stateMode >>= \case
+  NormalMode -> maybe (pure Continue) handleNormalModeCmd case ev of
+    EvKey (KChar c) [] -> case c of
+      'Q' -> Just CmdQuit
+      'i' -> Just CmdEnterInsertMode
+      'o' -> Just $ CmdOpenFile "app/Main.hs"
+      'h' -> Just $ CmdMoveCursorRelative (-1, 0)
+      'j' -> Just $ CmdMoveCursorRelative (0, 1)
+      'k' -> Just $ CmdMoveCursorRelative (0, -1)
+      'l' -> Just $ CmdMoveCursorRelative (1, 0)
+      'm' -> Just $ CmdScroll 1
+      ',' -> Just $ CmdScroll (-1)
+      's' -> Just   CmdSave
+      'S' -> Just   CmdSaveAs
+      -- ignore all other chars
+      _ -> Nothing
+    -- ignore all other keys
+    EvKey _ _ -> Nothing
+    -- ignore all other events
+    _ -> Nothing
+  InsertMode -> maybe
+    (pure Continue)
+    handleInsertModeCmd
+    case ev of
+      EvKey KEsc [] -> Just CmdEnterNormalMode
+      EvKey (KChar c) [] -> Just $ CmdInsertChar c
+      EvKey KBS [] -> Just CmdBackspace
+      EvKey KDel [] -> Just CmdDel
+      EvKey KEnter [] -> Just CmdInsertNewline
+      _ -> Nothing
 
 openFile :: FilePath -> IO Buffer
 openFile path = do
