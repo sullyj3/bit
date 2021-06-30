@@ -57,6 +57,7 @@ data Window = Window
     _winCursorLocation :: CursorLocation,
     _winRect :: Rect,
     -- How to quit message. Should only be displayed for an empty buffer when bit starts. Disappears after the buffer is modified
+    -- TODO: refactor, this flag probably belongs in AppState
     _winShowStartMessage :: Bool 
   }
 
