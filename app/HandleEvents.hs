@@ -68,20 +68,21 @@ handleNormalModeCmd = \case
         -- no filename associated with buffer
         pure Continue
       Just path -> do
-        liftIO $ saveLinesToPath path _bufferLines
-        setStatusMessage $ "saved to " <> T.pack path
+        saveLinesToPath path _bufferLines
         stateWindow . windowBuffer . bufferChanged .= False
         pure Continue
   CmdSaveAs -> do
-    currPath <-  (use $ stateWindow . windowBuffer . bufferFilePath)
+    currPath <- use $ stateWindow . windowBuffer . bufferFilePath
     let contents :: Text
-        contents = fromMaybe mempty (fromString <$> currPath)
+        contents = maybe mempty fromString currPath
     stateCurrInputWidget .= Just (InputWidget InputWidgetSaveAsPath "path> " contents)
     pure Continue
 
 -- TODO: make more efficient using streamly or something
-saveLinesToPath :: FilePath -> Seq Text -> IO ()
-saveLinesToPath path theLines = writeFileText path (unlines . toList $ theLines)
+saveLinesToPath :: FilePath -> Seq Text -> App ()
+saveLinesToPath path theLines = do
+  liftIO $ writeFileText path (unlines . toList $ theLines)
+  setStatusMessage $ "saved to " <> T.pack path
 
 
 rectFullScreen :: (Int, Int) -> Rect
@@ -198,9 +199,11 @@ handleEventInputWidget iw@InputWidget {..} ev = case ev of
     bufLines <- use $ stateWindow . windowBuffer . bufferLines
     if T.null _inputWidgetContents 
       then do setStatusMessage "Can't save to empty path"
-      else do let path = _inputWidgetContents
-              liftIO $ saveLinesToPath (T.unpack path) bufLines
-              setStatusMessage $ "Saved to " <> path
+      else do let path :: FilePath
+                  path = T.unpack _inputWidgetContents
+              saveLinesToPath path bufLines
+              stateWindow . windowBuffer . bufferFilePath .= Just path
+              setStatusMessage $ "Saved to " <> T.pack path
     stateCurrInputWidget .= Nothing
     pure Continue
   EvKey KEsc [] -> do
