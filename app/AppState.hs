@@ -40,6 +40,9 @@ data Rect = Rect
   }
   deriving (Show)
 
+rectHeight :: Rect -> Int
+rectHeight (Rect _ (_,h)) = h
+
 data CursorLocation = CursorLocation
   { _cursorColumn :: Int,
     _cursorLine :: Int
@@ -87,26 +90,10 @@ moveCursor (dx, dy) win@Window {..} =
 
     Rect _ (_, winHeight) = win ^. winRect
 
-    topLine' = case lineInViewPort _winTopLine currLine' _winRect of
+    topLine' = case compareRange currLine' ( _winTopLine, _winTopLine + winHeight ) of
       LT -> currLine'
       EQ -> _winTopLine
       GT -> currLine' - winHeight + 1
-
--- | return LT if line is above the viewport, GT if it's below, or Eq if it's within
--- >>> lineInViewPort 1 0 (Rect (0,0) (10,10))
--- LT
---
--- >>> lineInViewPort 0 0 (Rect (0,0) (10,10))
--- EQ
---
--- >>> lineInViewPort 0 9 (Rect (0,0) (10,10))
--- EQ
---
--- >>> lineInViewPort 0 10 (Rect (0,0) (10,10))
--- GT
-lineInViewPort :: Int -> Int -> Rect -> Ordering
-lineInViewPort topLine lineNumber Rect {rectDimensions = (_, height)}
-  = compareRange lineNumber (topLine, topLine+height)
 
 
 -- check whether an int is less than, within, or greater than a half-open interval
@@ -124,10 +111,12 @@ scrollWindow n win@Window {..} =
     newTopLine = clamp 0 (_winTopLine + n) (bufferLineCount _windowBuffer)
 
     CursorLocation curCol curLine = _winCursorLocation
-    cursor' = case lineInViewPort newTopLine curLine _winRect of
+    cursor' = case compareRange curLine (newTopLine, newTopLine + rectHeight _winRect) of
       EQ -> _winCursorLocation
-      -- we've scrolled the cursor out of view, so we clamp the cursor to the
-      -- viewport, then clamp to the length of the new line.
+      -- for LT or GT, we've scrolled the cursor out of view, so we clamp the
+      -- cursor vertically to the viewport.
+      -- now it is on either the top or bottom line of the viewport.
+      -- we also clamp the cursor's horizontal position to the length of that line
       _ -> CursorLocation curCol' curLine'
         where
           Rect _ (_, winHeight) = _winRect
