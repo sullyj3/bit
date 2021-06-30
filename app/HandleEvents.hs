@@ -9,6 +9,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
+{-# LANGUAGE ScopedTypeVariables #-}
 module HandleEvents where
 
 import AppState
@@ -19,6 +20,7 @@ import Flow ((|>))
 import Graphics.Vty hiding (update)
 import Lens.Micro.Platform
 import Relude
+import Control.Exception (IOException, catch)
 
 type App a = RWST Vty () AppState IO a
 
@@ -251,7 +253,11 @@ handleEventWindow ev = use stateMode >>= \case
       EvKey KEnter [] -> Just CmdInsertNewline
       _ -> Nothing
 
+-- creates a new empty buffer if there is no existing file at the path
 openFile :: FilePath -> IO Buffer
-openFile path = do
+openFile path = (do
   theLines <- Seq.fromList . lines <$> readFileText path
-  pure $ Buffer (Just path) theLines False
+  pure $ Buffer (Just path) theLines False)
+    `catch`
+  \ (_ :: IOException) -> pure $ newEmptyBuffer {_bufferFilePath = Just path}
+
