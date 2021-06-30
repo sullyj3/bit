@@ -25,3 +25,5 @@
 - [ ] deal correctly with characters of width > 1
 - [ ] use a rope for each line (is this a terrible idea? lots of memory overhead. Maybe switch depending on line length)
 - [ ] autoclose brackets
+- [ ] better line editing for input widget
+  - eg visible cursor, arrow key movement at minimum. Will probably want to re-use some insert mode code
