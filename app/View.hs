@@ -80,7 +80,7 @@ viewLine mCursorX windowWidth _lineNumber l = case mCursorX of
 viewAppState :: AppState -> Picture
 viewAppState appState@AppState {..} = picForLayers [bottomLine, mainWindow]
   where
-    (w, h) = appState ^. stateDimensions
+    (_, h) = _stateDimensions
     bottomLine = translate 0 (h -1) $ case _stateCurrInputWidget of
       Nothing -> statusBar appState True
       Just InputWidget {..} -> case _inputWidgetType of
@@ -89,13 +89,13 @@ viewAppState appState@AppState {..} = picForLayers [bottomLine, mainWindow]
     mainWindow = viewMainWindow $ appState ^. stateWindow
 
 statusBar :: AppState -> Bool -> Image
-statusBar appState showDiagnostics =
+statusBar appState _showDiagnostics =
   case appState ^. stateStatusMessage of
     Just msg -> text defAttr (fromStrict msg)
     Nothing -> horizCat
       [modeWidget, middlePadding, currFileWidget, rightPadding]
   where
-    (w, h) = appState ^. stateDimensions
+    (w, _) = appState ^. stateDimensions
 
     accentColor = case appState ^. stateMode of
       NormalMode -> blue

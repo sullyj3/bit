@@ -36,8 +36,9 @@ mkInitialState vty AppArgs {..} = do
   let (w, h) = bounds
   -- h-1 leaves room for the status bar
   -- TODO this is a bug waiting to happen, figure out something more principled
-  let winRect = Rect (0, 0) (w, h -1)
-  initialWindow <- mkInitialWindow winRect argsFileToOpen
+  initialBuf <- mkInitialBuffer argsFileToOpen
+  let windowRect = Rect (0, 0) (w, h -1)
+      initialWindow = mkInitialWindow windowRect argsFileToOpen initialBuf
   pure AppState { _stateDimensions = bounds,
     _stateLastEvent = Nothing,
     _stateWindow = initialWindow,
@@ -45,12 +46,16 @@ mkInitialState vty AppArgs {..} = do
     _stateStatusMessage = Nothing,
     _stateCurrInputWidget = Nothing }
 
-mkInitialWindow :: Rect -> Maybe FilePath -> IO Window
-mkInitialWindow winRect = \case
-  Just fp -> do
-    buf <- openFile fp
-    pure $ windowFromBuf winRect buf False
-  Nothing -> pure $ windowFromBuf winRect newEmptyBuffer True
+mkInitialWindow :: Rect -> Maybe FilePath -> Buffer -> Window
+mkInitialWindow rect fp buf =
+  windowFromBuf rect buf case fp of
+    Just _ -> False
+    Nothing -> True
+
+mkInitialBuffer :: Maybe FilePath -> IO Buffer
+mkInitialBuffer = \case
+  Just fp -> openFile fp
+  Nothing -> pure newEmptyBuffer
 
 main :: IO ()
 main = do
