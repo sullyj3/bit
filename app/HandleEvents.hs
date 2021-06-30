@@ -42,7 +42,7 @@ data Command a where
   CmdInsertNewline :: Command 'InsertModeCmd
   CmdDel :: Command 'InsertModeCmd
   CmdSave :: Command 'NormalModeCmd
-  --CmdSaveAs :: Command 'NormalModeCmd
+  CmdSaveAs :: Command 'NormalModeCmd
 
 handleNormalModeCmd :: Command 'NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd = \case
@@ -71,6 +71,12 @@ handleNormalModeCmd = \case
         setStatusMessage $ "saved to " <> T.pack path
         stateWindow . windowBuffer . bufferChanged .= False
         pure Continue
+  CmdSaveAs -> do
+    currPath <-  (use $ stateWindow . windowBuffer . bufferFilePath)
+    let contents :: Text
+        contents = fromMaybe mempty (fromString <$> currPath)
+    stateCurrInputWidget .= Just (InputWidget InputWidgetSaveAsPath "path> " contents)
+    pure Continue
 
 -- TODO: make more efficient using streamly or something
 saveLinesToPath :: FilePath -> Seq Text -> IO ()
@@ -188,6 +194,7 @@ handleEvent = do
             'm' -> Just $ CmdScroll 1
             ',' -> Just $ CmdScroll (-1)
             's' -> Just $ CmdSave
+            'S' -> Just $ CmdSaveAs
             -- ignore all other chars
             _ -> Nothing
           -- ignore all other keys

@@ -26,6 +26,8 @@ viewMainWindow Window {..}
   | showStartMsg = howToQuit
   | otherwise = vertCat $ toList theLines <> emptyLines
   where
+    -- TODO check for and display popup widgets
+
     howToQuit = string defAttr "press Q to exit"
     CursorLocation curCol curLine = _winCursorLocation
     (Buffer _ bufLines _) = _windowBuffer
@@ -76,14 +78,19 @@ viewLine mCursorX windowWidth _lineNumber l = case mCursorX of
     remainingWidth = windowWidth - T.length l
 
 viewAppState :: AppState -> Picture
-viewAppState appState = picForLayers [bar, mainWindow]
+viewAppState appState@AppState {..} = picForLayers [bottomLine, mainWindow]
   where
-    bar = statusBar appState True
+    (w, h) = appState ^. stateDimensions
+    bottomLine = translate 0 (h -1) $ case _stateCurrInputWidget of
+      Nothing -> statusBar appState True
+      Just InputWidget {..} -> case _inputWidgetType of
+        InputWidgetSaveAsPath -> text defAttr . fromStrict $ _inputWidgetPrompt <> _inputWidgetContents
+
     mainWindow = viewMainWindow $ appState ^. stateWindow
 
 statusBar :: AppState -> Bool -> Image
 statusBar appState showDiagnostics =
-  translate 0 (h -1) $ case appState ^. stateStatusMessage of
+  case appState ^. stateStatusMessage of
     Just msg -> text defAttr (fromStrict msg)
     Nothing -> horizCat
       [modeWidget, middlePadding, currFileWidget, rightPadding]

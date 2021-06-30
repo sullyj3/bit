@@ -56,7 +56,8 @@ data Window = Window
     _winTopLine :: Int,
     _winCursorLocation :: CursorLocation,
     _winRect :: Rect,
-    _winShowStartMessage :: Bool
+    -- How to quit message. Should only be displayed for an empty buffer when bit starts. Disappears after the buffer is modified
+    _winShowStartMessage :: Bool 
   }
 
 makeLenses ''Window
@@ -139,13 +140,24 @@ clamp a x b = max a (min x b)
 
 data EditorMode = NormalMode | InsertMode
 
+data InputWidgetType = InputWidgetSaveAsPath
+
+data InputWidget = InputWidget {
+  _inputWidgetType :: InputWidgetType,
+  _inputWidgetPrompt :: Text,
+  _inputWidgetContents :: Text
+}
+
+makeLenses ''InputWidget
+
 data AppState = AppState
   { _stateDimensions :: (Int, Int),
     _stateLastEvent :: Maybe Event,
     _stateWindow :: Window,
     _stateMode :: EditorMode,
     -- a temporary message to be displayed in the status bar. Disappears after input
-    _stateStatusMessage :: Maybe Text
+    _stateStatusMessage :: Maybe Text,
+    _stateCurrInputWidget :: Maybe InputWidget
   }
 
 makeLenses ''AppState

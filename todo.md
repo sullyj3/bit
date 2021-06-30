@@ -2,8 +2,11 @@
 ## In progress
 
 ## todo
+- [ ] if path provided on command line doesn't exist, create a new buffer with that path
 - [ ] add general way of getting input from the user, eg command line, filename input
 - [ ] saving to arbitrary location
+- [ ] display error message when trying to save a file with no path
+  in future maybe just automatically open the save as dialog
 - [ ] creating a new buffer
 - [ ] add error message for saving when the buffer has no path yet
 - [ ] I, a, A, o, O
