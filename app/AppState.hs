@@ -117,7 +117,6 @@ compareRange x (a,b)
 
 -- | ensures cursor remains within the viewport
 scrollWindow :: Int -> Window -> Window
---scrollWindow n (Window buf winTopLine cursor rect ssm) = Window buf newTopLine cursor' rect ssm
 scrollWindow n win@Window {..} =
   win {_winTopLine = newTopLine, _winCursorLocation = cursor'}
   where
