@@ -259,5 +259,7 @@ openFile path = (do
   theLines <- Seq.fromList . lines <$> readFileText path
   pure $ Buffer (Just path) theLines False)
     `catch`
+  -- TODO figure out how to check that it's the right IO exception, from memory
+  -- I think we may have to resort to string comparison
   \ (_ :: IOException) -> pure $ newEmptyBuffer {_bufferFilePath = Just path}
 
