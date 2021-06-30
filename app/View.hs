@@ -84,7 +84,7 @@ viewAppState appState = picForLayers [bar, mainWindow]
 statusBar :: AppState -> Bool -> Image
 statusBar appState showDiagnostics =
   translate 0 (h -1) $ case appState ^. stateStatusMessage of
-    Just msg -> text defAttr (fromStrict msg) 
+    Just msg -> text defAttr (fromStrict msg)
     Nothing -> horizCat
       [modeWidget, middlePadding, currFileWidget, rightPadding]
   where

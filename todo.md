@@ -10,7 +10,7 @@
 - [ ] selection
 - [ ] line numbers
 - [ ] fuzzy finding of files
-
+- [ ] ensure files are terminated with a newline when saving
 - [ ] command line
 - [ ] investigate where I should put strictness annotations
 - [ ] display tabs correctly
