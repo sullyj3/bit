@@ -195,6 +195,13 @@ handleEventInputWidget iw@InputWidget {..} ev = case ev of
     let contents' = _inputWidgetContents <> T.singleton c
     stateCurrInputWidget .= Just (iw {_inputWidgetContents = contents'})
     pure Continue
+  EvKey KBS [] -> do
+    let contents' = if T.null _inputWidgetContents 
+                      then _inputWidgetContents 
+                      else T.init _inputWidgetContents
+    stateCurrInputWidget .= Just (iw {_inputWidgetContents = contents'})
+    pure Continue
+
   EvKey KEnter [] -> do
     bufLines <- use $ stateWindow . windowBuffer . bufferLines
     if T.null _inputWidgetContents 
