@@ -117,23 +117,25 @@ compareRange x (a,b)
 
 -- | ensures cursor remains within the viewport
 scrollWindow :: Int -> Window -> Window
-scrollWindow n (Window buf winTopLine cursor rect ssm) = Window buf newTopLine cursor' rect ssm
+--scrollWindow n (Window buf winTopLine cursor rect ssm) = Window buf newTopLine cursor' rect ssm
+scrollWindow n win@Window {..} =
+  win {_winTopLine = newTopLine, _winCursorLocation = cursor'}
   where
-    newTopLine = clamp 0 (winTopLine + n) (bufferLineCount buf)
+    newTopLine = clamp 0 (_winTopLine + n) (bufferLineCount _windowBuffer)
 
-    CursorLocation curCol curLine = cursor
-    cursor' = case lineInViewPort newTopLine curLine rect of
-      EQ -> cursor
+    CursorLocation curCol curLine = _winCursorLocation
+    cursor' = case lineInViewPort newTopLine curLine _winRect of
+      EQ -> _winCursorLocation
       -- we've scrolled the cursor out of view, so we clamp the cursor to the
       -- viewport, then clamp to the length of the new line.
       _ -> CursorLocation curCol' curLine'
         where
-          Rect _ (_, winHeight) = rect
+          Rect _ (_, winHeight) = _winRect
           curLine' = clamp newTopLine curLine (newTopLine + winHeight)
           curCol' = clamp 0 curCol lineWidth
 
           lineWidth :: Int
-          lineWidth = T.length <| _bufferLines buf `Seq.index` curLine'
+          lineWidth = T.length <| _bufferLines _windowBuffer `Seq.index` curLine'
 
 clamp :: Ord a => a -> a -> a -> a
 clamp a x b = max a (min x b)
