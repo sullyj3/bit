@@ -65,15 +65,15 @@ handleNormalModeCmd = \case
   CmdSave -> do
     Buffer {..} <- use (stateWindow . windowBuffer)
     case _bufferFilePath of
-      Nothing -> do
-        -- TODO: display some kind of error message that there is 
-        -- no filename associated with buffer
-        pure Continue
+      Nothing -> openSaveAsDialog
       Just path -> do
         saveLinesToPath path _bufferLines
         stateWindow . windowBuffer . bufferChanged .= False
         pure Continue
-  CmdSaveAs -> do
+  CmdSaveAs -> openSaveAsDialog
+
+openSaveAsDialog :: App ShouldQuit
+openSaveAsDialog = do
     currPath <- use $ stateWindow . windowBuffer . bufferFilePath
     let contents :: Text
         contents = maybe mempty fromString currPath
