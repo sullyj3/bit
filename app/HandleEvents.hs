@@ -25,6 +25,7 @@ import Control.Exception (IOException, catch)
 
 import qualified Data.Map.NonEmpty as NEMap
 import           Data.Map.NonEmpty (NEMap)
+import AppState (bufInsertChar)
 
 type App a = RWST Vty () AppState IO a
 
@@ -53,7 +54,7 @@ data Command a where
   CmdNewBuffer :: Command 'NormalModeCmd
 
 
-newBufferID :: MonadState AppState m => m BufferID 
+newBufferID :: MonadState AppState m => m BufferID
 newBufferID = do
   bid <- use stateNextBufID
   stateNextBufID %= succ
@@ -62,7 +63,7 @@ newBufferID = do
 
 handleNormalModeCmd :: Command 'NormalModeCmd -> App ShouldQuit
 handleNormalModeCmd cmd = do
-  currBuf <- getCurrentBuffer <$> get :: App Buffer
+  currBuf <- getCurrentBuffer <$> get
   let bufLines = _bufferLines currBuf
   case cmd of
     CmdMoveCursorRelative v -> Continue <$
@@ -122,23 +123,16 @@ handleInsertModeCmd =
     CmdInsertNewline -> stateWindow %= winInsertNewline
     CmdDel -> stateWindow %= winDel
 
--- TODO: There are two separate concerns here:
--- - inserting the character into the buffer
--- - ensuring the cursor is placed in the correct position in the window.
--- - these should probably be separate? Think about it
--- will probably need to be Char -> AppState -> AppState
-winInsertChar' :: Char -> Window -> Window
-winInsertChar' c win@Window {_windowBuffer = Buffer fp bufLines _ } =
-  moveCursor (1, 0) win'
-  where
-    CursorLocation curCol curLine = win ^. winCursorLocation
-
-    bufLines' = Seq.adjust' (insertChar c curCol) curLine bufLines
-    win' = win {_windowBuffer = Buffer fp bufLines' True}
 
 winInsertChar :: Char -> AppState -> AppState
-winInsertChar c state = undefined 
-  where buf = getCurrentBuffer state
+winInsertChar c s = 
+  s |> modifyCurrentBuffer (const buf') 
+    |> stateWindow .~ win'
+  where -- first modify the buffer
+        cursorLoc = s ^. stateWindow . winCursorLocation
+        buf' = bufInsertChar c cursorLoc (getCurrentBuffer s)
+        -- then move the cursor
+        win' = moveCursor (1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
 
 -- delete the character before the cursor, and move the cursor back one.
 winBackspace :: Window -> Window
@@ -184,11 +178,6 @@ deleteChar i txt
   | i >= T.length txt = txt
   | otherwise = let (l, r) = T.splitAt i txt in l <> T.tail r
 
--- TODO probably inefficient, especially for long lines
-insertChar :: Char -> Int -> Text -> Text
-insertChar c i txt = l <> T.singleton c <> r
-  where
-    (l, r) = T.splitAt i txt
 
 data ShouldQuit = Quit | Continue
   deriving (Show)
@@ -228,15 +217,15 @@ handleEventInputWidget iw@InputWidget {..} ev = case ev of
     stateCurrInputWidget .= Just (iw {_inputWidgetContents = contents'})
     pure Continue
   EvKey KBS [] -> do
-    let contents' = if T.null _inputWidgetContents 
-                      then _inputWidgetContents 
+    let contents' = if T.null _inputWidgetContents
+                      then _inputWidgetContents
                       else T.init _inputWidgetContents
     stateCurrInputWidget .= Just (iw {_inputWidgetContents = contents'})
     pure Continue
 
   EvKey KEnter [] -> do
     bufLines <- (^. bufferLines) . getCurrentBuffer <$> get
-    if T.null _inputWidgetContents 
+    if T.null _inputWidgetContents
       then do setStatusMessage "Can't save to empty path"
       else do let path :: FilePath
                   path = T.unpack _inputWidgetContents
@@ -294,7 +283,7 @@ openFile path = do
     tryOpenFile bid = do
       theLines <- Seq.fromList . lines <$> readFileText path
       pure $ Buffer bid (Just path) theLines False
-    
+
     -- If the file isn't present, create an empty buffer
     -- TODO figure out how to check that it's the right IO exception, from memory
     -- I think we may have to resort to string comparison

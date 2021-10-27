@@ -47,6 +47,17 @@ newEmptyBuffer bid = Buffer bid Nothing (Seq.singleton mempty) False
 bufferLineCount :: Buffer -> Int
 bufferLineCount Buffer {_bufferLines} = Seq.length _bufferLines
 
+bufInsertChar :: Char -> CursorLocation -> Buffer -> Buffer
+bufInsertChar c (CursorLocation currCol currLine) buf = 
+  buf |> bufferLines %~ Seq.adjust' (insertChar c currCol) currLine
+      |> bufferChanged .~ True
+
+-- TODO probably inefficient, especially for long lines
+insertChar :: Char -> Int -> Text -> Text
+insertChar c i txt = l <> T.singleton c <> r
+  where
+    (l, r) = T.splitAt i txt
+
 data Rect = Rect
   { rectTopLeft :: (Int, Int),
     rectDimensions :: (Int, Int)
@@ -71,7 +82,7 @@ makeLenses ''CursorLocation
 -- it
 data Window = Window
   { _windowBuffer :: BufferID,
-    _winTopLine :: Int,
+    _winTopLine :: Int, -- | represents the vertical scroll position of the viewport within the buffer
     _winCursorLocation :: CursorLocation,
     _winRect :: Rect,
     -- How to quit message. Should only be displayed for an empty buffer when bit starts. Disappears after the buffer is modified
@@ -114,8 +125,14 @@ moveCursor (dx, dy) bufLines win@Window {..} =
     Rect _ (_, winHeight) = win ^. winRect
 
     topLine' = case compareRange currLine' ( _winTopLine, _winTopLine + winHeight ) of
+      -- new current line is above the viewport, so we move upwards, setting it
+      -- to the top line of the viewport
       LT -> currLine'
+      -- new current line is within the current viewport, so we keep the top line the same
       EQ -> _winTopLine
+      -- new current line is below the viewport, so we move down, and make the 
+      -- new current line the bottom line in the window
+      -- TODO: unit tests, I think this can potentially become negative and it shouldn't
       GT -> currLine' - winHeight + 1
 
 
