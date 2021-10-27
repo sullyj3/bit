@@ -6,6 +6,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
@@ -60,10 +61,10 @@ newBufferID = do
 
 
 handleNormalModeCmd :: Command 'NormalModeCmd -> App ShouldQuit
-handleNormalModeCmd = do
-  currBuf <- getCurrentBuffer <$> get
+handleNormalModeCmd cmd = do
+  currBuf <- getCurrentBuffer <$> get :: App Buffer
   let bufLines = _bufferLines currBuf
-  \case
+  case cmd of
     CmdMoveCursorRelative v -> Continue <$
       (stateWindow %= moveCursor v bufLines)
     CmdScroll n -> Continue <$ (stateWindow %= scrollWindow n bufLines)
@@ -80,12 +81,12 @@ handleNormalModeCmd = do
       stateWindow .= window
       pure Continue
     CmdSave -> do
-      Buffer {..} <- use (stateWindow . windowBuffer)
+      Buffer { _bufferFilePath, _bufferLines } <- getCurrentBuffer <$> get
       case _bufferFilePath of
         Nothing -> openSaveAsDialog
         Just path -> do
           saveLinesToPath path _bufferLines
-          stateWindow . windowBuffer . bufferChanged .= False
+          modifyCurrentBuffer (\buf -> buf {_bufferChanged = False})
           pure Continue
     CmdSaveAs -> openSaveAsDialog
     CmdNewBuffer -> do
@@ -93,7 +94,7 @@ handleNormalModeCmd = do
 
 openSaveAsDialog :: App ShouldQuit
 openSaveAsDialog = do
-    currPath <- use $ stateWindow . windowBuffer . bufferFilePath
+    Buffer { _bufferFilePath = currPath } <- getCurrentBuffer <$> get
     let contents :: Text
         contents = maybe mempty fromString currPath
     stateCurrInputWidget .= Just (InputWidget InputWidgetSaveAsPath "path> " contents)

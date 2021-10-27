@@ -21,7 +21,6 @@ import Flow ((<|), (|>))
 import Graphics.Vty (Event)
 import Lens.Micro.Platform (makeLenses, (.~), (^.), (.=), (%=), use)
 import Relude
-import Relude.Unsafe (fromJust)
 import Safe.Partial
 
 -----------
@@ -196,6 +195,7 @@ data AppState = AppState
 
 makeLenses ''AppState
 
+-- todo make these into lenses
 getCurrentBuffer :: AppState -> Buffer
 getCurrentBuffer s = getBuffer bid buffers 
   where bid = s ^. stateWindow . windowBuffer
