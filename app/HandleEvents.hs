@@ -22,6 +22,9 @@ import Lens.Micro.Platform
 import Relude
 import Control.Exception (IOException, catch)
 
+import qualified Data.Map.NonEmpty as NEMap
+import           Data.Map.NonEmpty (NEMap)
+
 type App a = RWST Vty () AppState IO a
 
 askVty :: App Vty
@@ -46,31 +49,47 @@ data Command a where
   CmdDel :: Command 'InsertModeCmd
   CmdSave :: Command 'NormalModeCmd
   CmdSaveAs :: Command 'NormalModeCmd
+  CmdNewBuffer :: Command 'NormalModeCmd
+
+
+newBufferID :: MonadState AppState m => m BufferID 
+newBufferID = do
+  bid <- use stateNextBufID
+  stateNextBufID %= succ
+  pure bid
+
 
 handleNormalModeCmd :: Command 'NormalModeCmd -> App ShouldQuit
-handleNormalModeCmd = \case
-  CmdMoveCursorRelative v -> Continue <$ (stateWindow %= moveCursor v)
-  CmdScroll n -> Continue <$ (stateWindow %= scrollWindow n)
-  CmdEnterInsertMode ->
-    Continue <$ do
-      stateMode .= InsertMode
-      stateWindow %= (\win -> win {_winShowStartMessage = False})
-  CmdQuit -> pure Quit
-  CmdOpenFile fp -> do
-    buf <- liftIO $ openFile fp
-    dims <- use stateDimensions
-    let window = windowFromBuf (rectFullScreen dims) buf False
-    stateWindow .= window
-    pure Continue
-  CmdSave -> do
-    Buffer {..} <- use (stateWindow . windowBuffer)
-    case _bufferFilePath of
-      Nothing -> openSaveAsDialog
-      Just path -> do
-        saveLinesToPath path _bufferLines
-        stateWindow . windowBuffer . bufferChanged .= False
-        pure Continue
-  CmdSaveAs -> openSaveAsDialog
+handleNormalModeCmd = do
+  currBuf <- getCurrentBuffer <$> get
+  let bufLines = _bufferLines currBuf
+  \case
+    CmdMoveCursorRelative v -> Continue <$
+      (stateWindow %= moveCursor v bufLines)
+    CmdScroll n -> Continue <$ (stateWindow %= scrollWindow n bufLines)
+    CmdEnterInsertMode ->
+      Continue <$ do
+        stateMode .= InsertMode
+        stateWindow %= (\win -> win {_winShowStartMessage = False})
+    CmdQuit -> pure Quit
+    CmdOpenFile fp -> do
+      buf <- openFile fp
+      dims <- use stateDimensions
+      stateOpenBuffers %= insertBuffer buf
+      let window = windowFromBufID (rectFullScreen dims) (buf ^. bufferID) False
+      stateWindow .= window
+      pure Continue
+    CmdSave -> do
+      Buffer {..} <- use (stateWindow . windowBuffer)
+      case _bufferFilePath of
+        Nothing -> openSaveAsDialog
+        Just path -> do
+          saveLinesToPath path _bufferLines
+          stateWindow . windowBuffer . bufferChanged .= False
+          pure Continue
+    CmdSaveAs -> openSaveAsDialog
+    CmdNewBuffer -> do
+      undefined
 
 openSaveAsDialog :: App ShouldQuit
 openSaveAsDialog = do
@@ -102,6 +121,11 @@ handleInsertModeCmd =
     CmdInsertNewline -> stateWindow %= winInsertNewline
     CmdDel -> stateWindow %= winDel
 
+-- TODO: There are two separate concerns here:
+-- - inserting the character into the buffer
+-- - ensuring the cursor is placed in the correct position in the window.
+-- - these should probably be separate? Think about it
+-- will probably need to be Char -> AppState -> AppState
 winInsertChar :: Char -> Window -> Window
 winInsertChar c win@Window {_windowBuffer = Buffer fp bufLines _ } =
   moveCursor (1, 0) win'
@@ -191,6 +215,7 @@ handleEvent = do
         Nothing -> handleEventWindow ev
         Just iw -> handleEventInputWidget iw ev
 
+-- TODO refactor - this is currently specialized to saveas widget
 handleEventInputWidget :: InputWidget -> Event -> App ShouldQuit
 handleEventInputWidget iw@InputWidget {..} ev = case ev of
   EvKey (KChar c) [] -> do
@@ -205,13 +230,13 @@ handleEventInputWidget iw@InputWidget {..} ev = case ev of
     pure Continue
 
   EvKey KEnter [] -> do
-    bufLines <- use $ stateWindow . windowBuffer . bufferLines
+    bufLines <- (^. bufferLines) . getCurrentBuffer <$> get
     if T.null _inputWidgetContents 
       then do setStatusMessage "Can't save to empty path"
       else do let path :: FilePath
                   path = T.unpack _inputWidgetContents
               saveLinesToPath path bufLines
-              stateWindow . windowBuffer . bufferFilePath .= Just path
+              modifyCurrentBuffer (\buf -> buf { _bufferFilePath = Just path })
               setStatusMessage $ "Saved to " <> T.pack path
     stateCurrInputWidget .= Nothing
     pure Continue
@@ -236,6 +261,7 @@ handleEventWindow ev = use stateMode >>= \case
       ',' -> Just $ CmdScroll (-1)
       's' -> Just   CmdSave
       'S' -> Just   CmdSaveAs
+      'B' -> Just   CmdNewBuffer
       -- ignore all other chars
       _ -> Nothing
     -- ignore all other keys
@@ -254,12 +280,21 @@ handleEventWindow ev = use stateMode >>= \case
       _ -> Nothing
 
 -- creates a new empty buffer if there is no existing file at the path
-openFile :: FilePath -> IO Buffer
-openFile path = (do
-  theLines <- Seq.fromList . lines <$> readFileText path
-  pure $ Buffer (Just path) theLines False)
-    `catch`
-  -- TODO figure out how to check that it's the right IO exception, from memory
-  -- I think we may have to resort to string comparison
-  \ (_ :: IOException) -> pure $ newEmptyBuffer {_bufferFilePath = Just path}
+openFile :: FilePath -> App Buffer
+openFile path = do
+    bid <- newBufferID
+    liftIO $ tryOpenFile bid `catch` orCreateNewBuffer bid
+  where
+    tryOpenFile :: BufferID -> IO Buffer
+    tryOpenFile bid = do
+      theLines <- Seq.fromList . lines <$> readFileText path
+      pure $ Buffer bid (Just path) theLines False
+    
+    -- If the file isn't present, create an empty buffer
+    -- TODO figure out how to check that it's the right IO exception, from memory
+    -- I think we may have to resort to string comparison
+    orCreateNewBuffer :: BufferID -> IOException -> IO Buffer
+    orCreateNewBuffer bid _ = pure $
+      (newEmptyBuffer bid) {_bufferFilePath = Just path}
+
 

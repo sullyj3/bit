@@ -30,6 +30,8 @@ parseArgs args = case args of
   [fp] -> Just . AppArgs . Just $ fp
   _ -> Nothing
 
+initialBufferID = BufferID 0
+
 mkInitialState :: Vty -> AppArgs -> IO AppState
 mkInitialState vty AppArgs {..} = do
   bounds <- liftIO $ displayBounds $ outputIface vty
@@ -44,7 +46,9 @@ mkInitialState vty AppArgs {..} = do
     _stateWindow = initialWindow,
     _stateMode = NormalMode,
     _stateStatusMessage = Nothing,
-    _stateCurrInputWidget = Nothing }
+    _stateCurrInputWidget = Nothing,
+    _stateOpenBuffers = NEMap.singleton (initialBuf ^. bufferID) initialBuf,
+    _stateNextBufID = initialBuf ^. bufferID + 1 }
 
 mkInitialWindow :: Rect -> Maybe FilePath -> Buffer -> Window
 mkInitialWindow rect fp buf =
@@ -54,8 +58,8 @@ mkInitialWindow rect fp buf =
 
 mkInitialBuffer :: Maybe FilePath -> IO Buffer
 mkInitialBuffer = \case
-  Just fp -> openFile fp
-  Nothing -> pure newEmptyBuffer
+  Just fp -> ($ initialBufferID) <$> openFile fp
+  Nothing -> pure (newEmptyBuffer initialBufferID)
 
 main :: IO ()
 main = do

@@ -24,6 +24,8 @@ dependencies:
 - base >= 4.7 && < 5
 - microlens-platform
 - containers
+- nonempty-containers
+- safe
 - text
 - vty
 - mtl

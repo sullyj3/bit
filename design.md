@@ -5,6 +5,8 @@
 
 ## new user experience
 - should launch help the first time it's opened
+- several possible methods you might think of to open help should work
+  - f1, command "help", "docs" "doc"
 - ability to search for normal mode commands for easy keybinding discovery (help should mention this)
 
 ## appearance

@@ -26,8 +26,6 @@ viewMainWindow Window {..}
   | showStartMsg = howToQuit
   | otherwise = vertCat $ toList theLines <> emptyLines
   where
-    -- TODO check for and display popup widgets
-
     howToQuit = string defAttr "press Q to exit"
     CursorLocation curCol curLine = _winCursorLocation
     (Buffer _ bufLines _) = _windowBuffer
