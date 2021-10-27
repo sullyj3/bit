@@ -19,7 +19,7 @@ import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 import Flow ((<|), (|>))
 import Graphics.Vty (Event)
-import Lens.Micro.Platform (makeLenses, (.~), (^.), (.=), (%=), use)
+import Lens.Micro.Platform (makeLenses, (.~), (%~), (^.), Lens')
 import Relude
 import Safe.Partial
 
@@ -85,7 +85,14 @@ cursorLocTop :: CursorLocation
 cursorLocTop = CursorLocation 0 0
 
 windowFromBufID :: Rect -> BufferID -> Bool -> Window
-windowFromBufID rect buf showStartMsg = Window buf 0 cursorLocTop rect showStartMsg
+windowFromBufID rect buf showStartMsg = 
+  Window
+    { _windowBuffer = buf, 
+      _winTopLine = 0,
+      _winCursorLocation = cursorLocTop,
+      _winRect = rect,
+      _winShowStartMessage = showStartMsg
+    }
 
 
 
@@ -197,13 +204,17 @@ makeLenses ''AppState
 
 -- todo make these into lenses
 getCurrentBuffer :: AppState -> Buffer
-getCurrentBuffer s = getBuffer bid buffers 
-  where bid = s ^. stateWindow . windowBuffer
-        buffers = s ^. stateOpenBuffers
+getCurrentBuffer s = getBuffer (s ^. currentBufferID) (s ^. stateOpenBuffers) 
 
-modifyCurrentBuffer :: MonadState AppState m 
+currentBufferID :: Lens' AppState BufferID
+currentBufferID = stateWindow . windowBuffer
+
+modifyCurrentBuffer :: (Buffer -> Buffer) -> AppState -> AppState
+modifyCurrentBuffer f s = s |> stateOpenBuffers %~ modifyBuffer bid f
+  where bid = s ^. currentBufferID
+  
+
+modifyCurrentBufferState :: MonadState AppState m 
                     => (Buffer -> Buffer)
                     -> m ()
-modifyCurrentBuffer f = do
-  bid <- use $ stateWindow . windowBuffer
-  stateOpenBuffers %= modifyBuffer bid f
+modifyCurrentBufferState f = modify $ modifyCurrentBuffer f

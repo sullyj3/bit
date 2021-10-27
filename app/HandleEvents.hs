@@ -127,14 +127,18 @@ handleInsertModeCmd =
 -- - ensuring the cursor is placed in the correct position in the window.
 -- - these should probably be separate? Think about it
 -- will probably need to be Char -> AppState -> AppState
-winInsertChar :: Char -> Window -> Window
-winInsertChar c win@Window {_windowBuffer = Buffer fp bufLines _ } =
+winInsertChar' :: Char -> Window -> Window
+winInsertChar' c win@Window {_windowBuffer = Buffer fp bufLines _ } =
   moveCursor (1, 0) win'
   where
     CursorLocation curCol curLine = win ^. winCursorLocation
 
     bufLines' = Seq.adjust' (insertChar c curCol) curLine bufLines
     win' = win {_windowBuffer = Buffer fp bufLines' True}
+
+winInsertChar :: Char -> AppState -> AppState
+winInsertChar c state = undefined 
+  where buf = getCurrentBuffer state
 
 -- delete the character before the cursor, and move the cursor back one.
 winBackspace :: Window -> Window
@@ -237,7 +241,7 @@ handleEventInputWidget iw@InputWidget {..} ev = case ev of
       else do let path :: FilePath
                   path = T.unpack _inputWidgetContents
               saveLinesToPath path bufLines
-              modifyCurrentBuffer (\buf -> buf { _bufferFilePath = Just path })
+              modifyCurrentBufferState (\buf -> buf { _bufferFilePath = Just path })
               setStatusMessage $ "Saved to " <> T.pack path
     stateCurrInputWidget .= Nothing
     pure Continue
