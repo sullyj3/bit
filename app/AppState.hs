@@ -42,13 +42,19 @@ data Buffer = Buffer
 makeLenses ''Buffer
 
 newEmptyBuffer :: BufferID -> Buffer
-newEmptyBuffer bid = Buffer bid Nothing (Seq.singleton mempty) False
+newEmptyBuffer bid =
+  Buffer
+    { _bufferID = bid,
+      _bufferFilePath = Nothing,
+      _bufferLines = Seq.singleton mempty,
+      _bufferChanged = False
+    }
 
 bufferLineCount :: Buffer -> Int
 bufferLineCount Buffer {_bufferLines} = Seq.length _bufferLines
 
 bufGetLineLength :: Int -> Buffer -> Int
-bufGetLineLength line Buffer{_bufferLines} =
+bufGetLineLength line Buffer {_bufferLines} =
   T.length $ Seq.index _bufferLines line
 
 bufEdit ::
@@ -67,7 +73,7 @@ bufInsertNewLine :: CursorLocation -> Buffer -> Buffer
 bufInsertNewLine (CursorLocation col line) = bufEdit go
   where
     go :: BufferContents -> BufferContents
-    go bufLines = 
+    go bufLines =
       -- first element of bottom is the current line, we drop it and replace with
       -- the two halves of the split line
       top <> Seq.fromList [l, r] <> Seq.drop 1 bottom
@@ -75,7 +81,6 @@ bufInsertNewLine (CursorLocation col line) = bufEdit go
         theLine = bufLines `Seq.index` line
         (l, r) = T.splitAt col theLine
         (top, bottom) = Seq.splitAt line bufLines
-
 
 bufDeleteChar :: CursorLocation -> Buffer -> Buffer
 bufDeleteChar (CursorLocation col line) =
@@ -146,7 +151,8 @@ windowFromBufID rect buf showStartMsg =
 -- It scrolls the viewPoint to keep the cursor in view if necessary
 moveCursor :: (Int, Int) -> BufferContents -> Window -> Window
 moveCursor (dx, dy) bufLines win@Window {..} =
-  win |> winCursorLocation .~ newCursorLocation
+  win
+    |> winCursorLocation .~ newCursorLocation
     |> winTopLine .~ topLine'
   where
     CursorLocation currCol currLine = win ^. winCursorLocation
