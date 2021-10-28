@@ -133,6 +133,7 @@ openFile path =
     orCreateNewBuffer _ = pure $ Buffer.empty {_bufferFilePath = Just path}
 
 -- TODO: make more efficient using streamly or something
+-- TODO: handle file already exists/prompt overwrite
 saveContentsToPath :: FilePath -> BufferContents -> IO ()
 saveContentsToPath path (BufferContents theLines) =
   writeFileText path (unlines . toList $ theLines)
