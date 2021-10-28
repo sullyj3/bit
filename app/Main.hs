@@ -13,7 +13,7 @@ import Control.Exception (bracket)
 import Control.Monad.RWS.Strict (RWST (runRWST))
 import qualified Data.Map.NonEmpty as NEMap
 import Flow ((.>))
-import Graphics.Vty hiding (update)
+import Graphics.Vty (Vty)
 import qualified Graphics.Vty as Vty
 import HandleEvents (App, ShouldQuit (..), askVty, handleEvent, openFile)
 import Relude
@@ -36,12 +36,10 @@ initialBufferID :: BufferID
 initialBufferID = BufferID 0
 
 mkInitialState :: Vty -> AppArgs -> IO AppState
-mkInitialState vty AppArgs {..} = do
-  bounds <- liftIO $ displayBounds $ outputIface vty
-  let (w, h) = bounds
-  -- h-1 leaves room for the status bar
-  -- TODO this is a bug waiting to happen, figure out something more principled
+mkInitialState vty AppArgs{..} = do
+  bounds@(w, h) <- liftIO $ Vty.displayBounds $ Vty.outputIface vty
   initialBuf <- mkInitialBuffer argsFileToOpen
+  -- h-1 leaves room for the status bar
   let windowRect = Rect (0, 0) (w, h -1)
       initialWindow = mkInitialWindow windowRect argsFileToOpen initialBufferID
   pure
@@ -73,7 +71,7 @@ main = do
     getArgs >>= parseArgs
       .> maybe (die "invalid args") pure
 
-  cfg <- standardIOConfig
+  cfg <- Vty.standardIOConfig
   withVty cfg \vty -> do
     initialState <- mkInitialState vty args
     _ <- runRWST loop vty initialState
@@ -85,8 +83,8 @@ main = do
         Continue -> loop
         Quit -> pure ()
 
-    withVty :: Config -> (Vty -> IO c) -> IO c
-    withVty cfg = bracket (mkVty cfg) shutdown
+    withVty :: Vty.Config -> (Vty -> IO c) -> IO c
+    withVty cfg = bracket (Vty.mkVty cfg) Vty.shutdown
 
     presentView :: App ()
     presentView = do
