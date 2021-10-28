@@ -27,7 +27,9 @@ module Buffer
     insertChar,
     insertNewLine,
     deleteChar,
-  openFile,mkInitialBuffer)
+    openFile,
+    mkInitialBuffer,
+  )
 where
 
 import Control.Exception (IOException, catch)
