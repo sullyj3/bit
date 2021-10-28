@@ -14,7 +14,33 @@
 module HandleEvents where
 
 import AppState
-import Buffer
+  ( AppState,
+    EditorMode (InsertMode, NormalMode),
+    InputWidget (..),
+    InputWidgetType (InputWidgetSaveAsPath),
+    Rect (Rect),
+    Window (_winShowStartMessage),
+    backspace,
+    del,
+    getCurrentBuffer,
+    insertBuffer,
+    insertChar,
+    insertNewline,
+    modifyCurrentBufferState,
+    moveCursor,
+    scrollWindow,
+    stateCurrInputWidget,
+    stateDimensions,
+    stateLastEvent,
+    stateMode,
+    stateNextBufID,
+    stateOpenBuffers,
+    stateStatusMessage,
+    stateWindow,
+    windowFromBufID,
+  )
+import Buffer (Buffer (..), BufferID, bufferLines)
+import qualified Buffer
 import Control.Exception (IOException, catch)
 import Control.Monad.RWS.Strict (RWST)
 import qualified Data.Sequence as Seq
