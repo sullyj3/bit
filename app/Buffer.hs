@@ -18,15 +18,17 @@ import Flow ((|>))
 import Lens.Micro.Platform (makeLenses, (%~), (.~))
 import Relude
 
--- TODO: Is this relative to the window or the buffer? I think it's the buffer
--- regardless, needs to be renamed to make this clearer
-data CursorLocation = CursorLocation
+data BufferLocation = BufferLocation
   { _cursorColumn :: Int,
     _cursorLine :: Int
   }
   deriving (Show)
 
-makeLenses ''CursorLocation
+makeLenses ''BufferLocation
+
+bufferLocTop :: BufferLocation
+bufferLocTop = BufferLocation 0 0
+
 
 newtype BufferID = BufferID Int
   deriving (Eq, Show, Ord, Enum)
@@ -65,12 +67,12 @@ edit f buf =
     |> bufferLines %~ f
     |> bufferChanged .~ True
 
-insertChar :: Char -> CursorLocation -> Buffer -> Buffer
-insertChar c (CursorLocation col line) =
+insertChar :: Char -> BufferLocation -> Buffer -> Buffer
+insertChar c (BufferLocation col line) =
   edit $ Seq.adjust' (insertCharTxt c col) line
 
-insertNewLine :: CursorLocation -> Buffer -> Buffer
-insertNewLine (CursorLocation col line) = edit go
+insertNewLine :: BufferLocation -> Buffer -> Buffer
+insertNewLine (BufferLocation col line) = edit go
   where
     go :: BufferContents -> BufferContents
     go bufLines =
@@ -82,8 +84,8 @@ insertNewLine (CursorLocation col line) = edit go
         (l, r) = T.splitAt col theLine
         (top, bottom) = Seq.splitAt line bufLines
 
-deleteChar :: CursorLocation -> Buffer -> Buffer
-deleteChar (CursorLocation col line) =
+deleteChar :: BufferLocation -> Buffer -> Buffer
+deleteChar (BufferLocation col line) =
   edit $ Seq.adjust' (deleteCharTxt col) line
 
 -- todo: move text manipulation functions into their own module

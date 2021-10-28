@@ -11,7 +11,7 @@
 
 module AppState where
 
-import Buffer (Buffer (..), BufferContents, BufferID (..), CursorLocation (..), bufferLines)
+import Buffer (Buffer (..), BufferContents, BufferID (..), BufferLocation (..), bufferLines)
 import qualified Buffer
 import Data.Map.NonEmpty (NEMap)
 import qualified Data.Map.NonEmpty as NEMap
@@ -43,7 +43,7 @@ data Window = Window
   { _windowBuffer :: BufferID,
     _winTopLine :: Int,
     -- | represents the vertical scroll position of the viewport within the buffer
-    _winCursorLocation :: CursorLocation,
+    _winCursorLocation :: BufferLocation,
     _winRect :: Rect,
     -- How to quit message. Should only be displayed for an empty buffer when bit starts. Disappears after the buffer is modified
     -- TODO: refactor, this flag probably belongs in AppState
@@ -52,15 +52,12 @@ data Window = Window
 
 makeLenses ''Window
 
-cursorLocTop :: CursorLocation
-cursorLocTop = CursorLocation 0 0
-
 windowFromBufID :: Rect -> BufferID -> Bool -> Window
 windowFromBufID rect buf showStartMsg =
   Window
     { _windowBuffer = buf,
       _winTopLine = 0,
-      _winCursorLocation = cursorLocTop,
+      _winCursorLocation = Buffer.bufferLocTop,
       _winRect = rect,
       _winShowStartMessage = showStartMsg
     }
@@ -73,13 +70,13 @@ moveCursor (dx, dy) bufLines win@Window {..} =
     |> winCursorLocation .~ newCursorLocation
     |> winTopLine .~ topLine'
   where
-    CursorLocation currCol currLine = win ^. winCursorLocation
+    BufferLocation currCol currLine = win ^. winCursorLocation
 
     currLine' = clamp 0 (currLine + dy) (Seq.length bufLines - 1)
     currentLine = bufLines `Seq.index` currLine'
 
     currCol' = clamp 0 (currCol + dx) (T.length currentLine -1)
-    newCursorLocation = CursorLocation currCol' currLine'
+    newCursorLocation = BufferLocation currCol' currLine'
 
     Rect _ (_, winHeight) = win ^. winRect
 
@@ -108,14 +105,14 @@ scrollWindow n bufLines win@Window {..} =
   where
     newTopLine = clamp 0 (_winTopLine + n) (Seq.length bufLines)
 
-    CursorLocation curCol curLine = _winCursorLocation
+    BufferLocation curCol curLine = _winCursorLocation
     cursor' = case compareRange curLine (newTopLine, newTopLine + rectHeight _winRect) of
       EQ -> _winCursorLocation
       -- for LT or GT, we've scrolled the cursor out of view, so we clamp the
       -- cursor vertically to the viewport.
       -- now it is on either the top or bottom line of the viewport.
       -- we also clamp the cursor's horizontal position to the length of that line
-      _ -> CursorLocation curCol' curLine'
+      _ -> BufferLocation curCol' curLine'
         where
           Rect _ (_, winHeight) = _winRect
           curLine' = clamp newTopLine curLine (newTopLine + winHeight)
@@ -207,8 +204,8 @@ backspace s =
     |> stateWindow .~ win'
   where
     -- first modify the buffer
-    CursorLocation col line = s ^. stateWindow . winCursorLocation
-    buf' = Buffer.deleteChar (CursorLocation (col -1) line) (getCurrentBuffer s)
+    BufferLocation col line = s ^. stateWindow . winCursorLocation
+    buf' = Buffer.deleteChar (BufferLocation (col -1) line) (getCurrentBuffer s)
     -- then move the cursor
     win' = moveCursor (-1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
 
@@ -220,7 +217,7 @@ del s =
   s |> modifyCurrentBuffer (const buf')
     |> stateWindow .~ win'
   where
-    loc@(CursorLocation col line) = s ^. stateWindow . winCursorLocation
+    loc@(BufferLocation col line) = s ^. stateWindow . winCursorLocation
     buf' = Buffer.deleteChar loc (getCurrentBuffer s)
 
     win = s ^. stateWindow
