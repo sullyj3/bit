@@ -230,7 +230,8 @@ insertBuffer buf =
   let bid = buf ^. bufferID
    in coerce $ NEMap.insert bid buf
 
--- Unsafe
+-- Unsafe - attempting to index using a BufferID that doesn't yet exist is a 
+-- programmer error
 getBuffer :: Partial => BufferID -> OpenBuffers -> Buffer
 getBuffer bid (OpenBuffers ob) =
   case NEMap.lookup bid ob of
