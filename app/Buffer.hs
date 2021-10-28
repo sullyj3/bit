@@ -17,6 +17,7 @@ import qualified Data.Text as T
 import Flow ((|>))
 import Lens.Micro.Platform (makeLenses, (%~), (.~))
 import Relude
+import qualified TextUtils as T
 
 data BufferLocation = BufferLocation
   { _cursorColumn :: Int,
@@ -28,7 +29,6 @@ makeLenses ''BufferLocation
 
 bufferLocTop :: BufferLocation
 bufferLocTop = BufferLocation 0 0
-
 
 newtype BufferID = BufferID Int
   deriving (Eq, Show, Ord, Enum)
@@ -69,7 +69,7 @@ edit f buf =
 
 insertChar :: Char -> BufferLocation -> Buffer -> Buffer
 insertChar c (BufferLocation col line) =
-  edit $ Seq.adjust' (insertCharTxt c col) line
+  edit $ Seq.adjust' (T.insertChar c col) line
 
 insertNewLine :: BufferLocation -> Buffer -> Buffer
 insertNewLine (BufferLocation col line) = edit go
@@ -86,18 +86,4 @@ insertNewLine (BufferLocation col line) = edit go
 
 deleteChar :: BufferLocation -> Buffer -> Buffer
 deleteChar (BufferLocation col line) =
-  edit $ Seq.adjust' (deleteCharTxt col) line
-
--- todo: move text manipulation functions into their own module
--- TODO probably inefficient, especially for long lines
-insertCharTxt :: Char -> Int -> Text -> Text
-insertCharTxt c i txt = l <> T.singleton c <> r
-  where
-    (l, r) = T.splitAt i txt
-
--- does nothing if i ∉ [0, T.length txt)
-deleteCharTxt :: Int -> Text -> Text
-deleteCharTxt i txt
-  | i < 0 = txt
-  | i >= T.length txt = txt
-  | otherwise = let (l, r) = T.splitAt i txt in l <> T.tail r
+  edit $ Seq.adjust' (T.deleteChar col) line
