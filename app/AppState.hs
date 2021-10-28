@@ -136,8 +136,6 @@ data InputWidget = InputWidget
 
 makeLenses ''InputWidget
 
--- Invariant: every BufferID key maps to a buffer with that bufferID
--- wish I knew how to enforce that with the type system
 newtype OpenBuffers = OpenBuffers (NEMap BufferID Buffer)
 
 insertBuffer :: BufferID -> Buffer -> OpenBuffers -> OpenBuffers
