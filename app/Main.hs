@@ -8,7 +8,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 import AppState
-import Buffer (Buffer, BufferID (..))
+import Buffer (BufferID (..))
 import qualified Buffer
 import Control.Exception (bracket)
 import Control.Monad.RWS.Strict (RWST (runRWST))
@@ -16,7 +16,7 @@ import qualified Data.Map.NonEmpty as NEMap
 import Flow ((.>))
 import Graphics.Vty (Vty)
 import qualified Graphics.Vty as Vty
-import HandleEvents (App, ShouldQuit (..), askVty, handleEvent, openFile)
+import HandleEvents (App, ShouldQuit (..), askVty, handleEvent)
 import Relude
 import System.Environment (getArgs)
 import View (viewAppState)
@@ -39,7 +39,7 @@ initialBufferID = BufferID 0
 mkInitialState :: Vty -> AppArgs -> IO AppState
 mkInitialState vty AppArgs {..} = do
   bounds@(w, h) <- liftIO $ Vty.displayBounds $ Vty.outputIface vty
-  initialBuf <- mkInitialBuffer argsFileToOpen
+  initialBuf <- Buffer.mkInitialBuffer argsFileToOpen
   -- h-1 leaves room for the status bar
   let windowRect = Rect (0, 0) (w, h -1)
       initialWindow = mkInitialWindow windowRect argsFileToOpen initialBufferID
@@ -60,11 +60,6 @@ mkInitialWindow rect fp buf =
   windowFromBufID rect buf case fp of
     Just _ -> False
     Nothing -> True
-
-mkInitialBuffer :: Maybe FilePath -> IO Buffer
-mkInitialBuffer = \case
-  Just fp -> openFile fp
-  Nothing -> pure Buffer.empty
 
 main :: IO ()
 main = do
