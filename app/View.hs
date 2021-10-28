@@ -21,18 +21,19 @@ import Relude
 ----------
 type CursorLocation = (Int, Int)
 
-viewMainWindow :: Window -> Image
-viewMainWindow Window {..}
+viewMainWindow :: AppState -> Image
+viewMainWindow s
   | showStartMsg = howToQuit
   | otherwise = vertCat $ toList theLines <> emptyLines
   where
+    Window {..} = s ^. stateWindow
     howToQuit = string defAttr "press Q to exit"
     CursorLocation curCol curLine = _winCursorLocation
-    (Buffer _ bufLines _) = _windowBuffer
+    Buffer{_bufferLines} = getCurrentBuffer s
     (winWidth, winHeight) = _winRect |> rectDimensions
     showStartMsg = _winShowStartMessage
 
-    linesToDisplay = Seq.take winHeight $ Seq.drop _winTopLine bufLines
+    linesToDisplay = Seq.take winHeight $ Seq.drop _winTopLine _bufferLines
 
     theLines :: Seq Image
     theLines =
@@ -84,7 +85,7 @@ viewAppState appState@AppState {..} = picForLayers [bottomLine, mainWindow]
       Just InputWidget {..} -> case _inputWidgetType of
         InputWidgetSaveAsPath -> text defAttr . fromStrict $ _inputWidgetPrompt <> _inputWidgetContents
 
-    mainWindow = viewMainWindow $ appState ^. stateWindow
+    mainWindow = viewMainWindow appState
 
 statusBar :: AppState -> Bool -> Image
 statusBar appState _showDiagnostics =
@@ -120,7 +121,7 @@ statusBar appState _showDiagnostics =
     currFileWidget :: Image
     currFileWidget = string defAttr $ path <> modifiedString
       where
-        Buffer {..} = appState ^. (stateWindow . windowBuffer)
+        Buffer {..} = getCurrentBuffer appState 
 
         path = fromMaybe "new file" _bufferFilePath
 

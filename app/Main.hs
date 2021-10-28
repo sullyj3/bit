@@ -13,10 +13,12 @@ import Control.Monad.RWS.Strict (RWST (runRWST))
 import Flow ((.>))
 import Graphics.Vty hiding (update)
 import qualified Graphics.Vty as Vty
-import HandleEvents (App, ShouldQuit (..), askVty, handleEvent, openFile)
+import HandleEvents (App, ShouldQuit (..), askVty, handleEvent, openFileIO)
 import Relude
 import System.Environment (getArgs)
 import View (viewAppState)
+import qualified Data.Map.NonEmpty as NEMap
+import Lens.Micro.Platform ((^.))
 
 ----------
 -- Main --
@@ -30,6 +32,7 @@ parseArgs args = case args of
   [fp] -> Just . AppArgs . Just $ fp
   _ -> Nothing
 
+initialBufferID :: BufferID
 initialBufferID = BufferID 0
 
 mkInitialState :: Vty -> AppArgs -> IO AppState
@@ -40,25 +43,25 @@ mkInitialState vty AppArgs {..} = do
   -- TODO this is a bug waiting to happen, figure out something more principled
   initialBuf <- mkInitialBuffer argsFileToOpen
   let windowRect = Rect (0, 0) (w, h -1)
-      initialWindow = mkInitialWindow windowRect argsFileToOpen initialBuf
+      initialWindow = mkInitialWindow windowRect argsFileToOpen initialBufferID
   pure AppState { _stateDimensions = bounds,
     _stateLastEvent = Nothing,
     _stateWindow = initialWindow,
     _stateMode = NormalMode,
     _stateStatusMessage = Nothing,
     _stateCurrInputWidget = Nothing,
-    _stateOpenBuffers = NEMap.singleton (initialBuf ^. bufferID) initialBuf,
-    _stateNextBufID = initialBuf ^. bufferID + 1 }
+    _stateOpenBuffers = OpenBuffers $ NEMap.singleton (initialBuf ^. bufferID) initialBuf,
+    _stateNextBufID = succ (initialBuf ^. bufferID) }
 
-mkInitialWindow :: Rect -> Maybe FilePath -> Buffer -> Window
+mkInitialWindow :: Rect -> Maybe FilePath -> BufferID -> Window
 mkInitialWindow rect fp buf =
-  windowFromBuf rect buf case fp of
+  windowFromBufID rect buf case fp of
     Just _ -> False
     Nothing -> True
 
 mkInitialBuffer :: Maybe FilePath -> IO Buffer
 mkInitialBuffer = \case
-  Just fp -> ($ initialBufferID) <$> openFile fp
+  Just fp -> openFileIO fp initialBufferID
   Nothing -> pure (newEmptyBuffer initialBufferID)
 
 main :: IO ()

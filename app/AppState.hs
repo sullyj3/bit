@@ -1,25 +1,24 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
-{-# LANGUAGE NamedFieldPuns #-}
 module AppState where
 
+import Data.Map.NonEmpty (NEMap)
 import qualified Data.Map.NonEmpty as NEMap
-import           Data.Map.NonEmpty (NEMap)
-
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 import Flow ((<|), (|>))
 import Graphics.Vty (Event)
-import Lens.Micro.Platform (makeLenses, (.~), (%~), (^.), Lens')
+import Lens.Micro.Platform (Lens', makeLenses, (%~), (.~), (^.))
 import Relude
 import Safe.Partial
 
@@ -36,6 +35,7 @@ data Buffer = Buffer
   { _bufferID :: BufferID,
     _bufferFilePath :: Maybe FilePath,
     _bufferLines :: BufferContents,
+    -- Any function which edits _bufferLines must set this flag
     _bufferChanged :: Bool
   }
 
@@ -47,16 +47,52 @@ newEmptyBuffer bid = Buffer bid Nothing (Seq.singleton mempty) False
 bufferLineCount :: Buffer -> Int
 bufferLineCount Buffer {_bufferLines} = Seq.length _bufferLines
 
+bufGetLineLength :: Int -> Buffer -> Int
+bufGetLineLength line Buffer{_bufferLines} =
+  T.length $ Seq.index _bufferLines line
+
+bufEdit ::
+  (BufferContents -> BufferContents) ->
+  (Buffer -> Buffer)
+bufEdit f buf =
+  buf
+    |> bufferLines %~ f
+    |> bufferChanged .~ True
+
 bufInsertChar :: Char -> CursorLocation -> Buffer -> Buffer
-bufInsertChar c (CursorLocation currCol currLine) buf = 
-  buf |> bufferLines %~ Seq.adjust' (insertChar c currCol) currLine
-      |> bufferChanged .~ True
+bufInsertChar c (CursorLocation col line) =
+  bufEdit $ Seq.adjust' (insertChar c col) line
+
+bufInsertNewLine :: CursorLocation -> Buffer -> Buffer
+bufInsertNewLine (CursorLocation col line) = bufEdit go
+  where
+    go :: BufferContents -> BufferContents
+    go bufLines = 
+      -- first element of bottom is the current line, we drop it and replace with
+      -- the two halves of the split line
+      top <> Seq.fromList [l, r] <> Seq.drop 1 bottom
+      where
+        theLine = bufLines `Seq.index` line
+        (l, r) = T.splitAt col theLine
+        (top, bottom) = Seq.splitAt line bufLines
+
+
+bufDeleteChar :: CursorLocation -> Buffer -> Buffer
+bufDeleteChar (CursorLocation col line) =
+  bufEdit $ Seq.adjust' (deleteChar col) line
 
 -- TODO probably inefficient, especially for long lines
 insertChar :: Char -> Int -> Text -> Text
 insertChar c i txt = l <> T.singleton c <> r
   where
     (l, r) = T.splitAt i txt
+
+-- does nothing if i ∉ [0, T.length txt)
+deleteChar :: Int -> Text -> Text
+deleteChar i txt
+  | i < 0 = txt
+  | i >= T.length txt = txt
+  | otherwise = let (l, r) = T.splitAt i txt in l <> T.tail r
 
 data Rect = Rect
   { rectTopLeft :: (Int, Int),
@@ -65,7 +101,7 @@ data Rect = Rect
   deriving (Show)
 
 rectHeight :: Rect -> Int
-rectHeight (Rect _ (_,h)) = h
+rectHeight (Rect _ (_, h)) = h
 
 -- TODO: Is this relative to the window or the buffer? I think it's the buffer
 -- regardless, needs to be renamed to make this clearer
@@ -82,12 +118,13 @@ makeLenses ''CursorLocation
 -- it
 data Window = Window
   { _windowBuffer :: BufferID,
-    _winTopLine :: Int, -- | represents the vertical scroll position of the viewport within the buffer
+    _winTopLine :: Int,
+    -- | represents the vertical scroll position of the viewport within the buffer
     _winCursorLocation :: CursorLocation,
     _winRect :: Rect,
     -- How to quit message. Should only be displayed for an empty buffer when bit starts. Disappears after the buffer is modified
     -- TODO: refactor, this flag probably belongs in AppState
-    _winShowStartMessage :: Bool 
+    _winShowStartMessage :: Bool
   }
 
 makeLenses ''Window
@@ -96,23 +133,21 @@ cursorLocTop :: CursorLocation
 cursorLocTop = CursorLocation 0 0
 
 windowFromBufID :: Rect -> BufferID -> Bool -> Window
-windowFromBufID rect buf showStartMsg = 
+windowFromBufID rect buf showStartMsg =
   Window
-    { _windowBuffer = buf, 
+    { _windowBuffer = buf,
       _winTopLine = 0,
       _winCursorLocation = cursorLocTop,
       _winRect = rect,
       _winShowStartMessage = showStartMsg
     }
 
-
-
 -- This function is safe - ensures the cursor stays inside the buffer, and doesn't move beyond the end of a line.
 -- It scrolls the viewPoint to keep the cursor in view if necessary
 moveCursor :: (Int, Int) -> BufferContents -> Window -> Window
 moveCursor (dx, dy) bufLines win@Window {..} =
   win |> winCursorLocation .~ newCursorLocation
-      |> winTopLine .~ topLine'
+    |> winTopLine .~ topLine'
   where
     CursorLocation currCol currLine = win ^. winCursorLocation
 
@@ -124,21 +159,20 @@ moveCursor (dx, dy) bufLines win@Window {..} =
 
     Rect _ (_, winHeight) = win ^. winRect
 
-    topLine' = case compareRange currLine' ( _winTopLine, _winTopLine + winHeight ) of
+    topLine' = case compareRange currLine' (_winTopLine, _winTopLine + winHeight) of
       -- new current line is above the viewport, so we move upwards, setting it
       -- to the top line of the viewport
       LT -> currLine'
       -- new current line is within the current viewport, so we keep the top line the same
       EQ -> _winTopLine
-      -- new current line is below the viewport, so we move down, and make the 
+      -- new current line is below the viewport, so we move down, and make the
       -- new current line the bottom line in the window
       -- TODO: unit tests, I think this can potentially become negative and it shouldn't
       GT -> currLine' - winHeight + 1
 
-
 -- check whether an int is less than, within, or greater than a half-open interval
 compareRange :: Int -> (Int, Int) -> Ordering
-compareRange x (a,b)
+compareRange x (a, b)
   | x < a = LT
   | x < b = EQ
   | otherwise = GT
@@ -173,11 +207,11 @@ data EditorMode = NormalMode | InsertMode
 
 data InputWidgetType = InputWidgetSaveAsPath
 
-data InputWidget = InputWidget {
-  _inputWidgetType :: !InputWidgetType,
-  _inputWidgetPrompt :: !Text,
-  _inputWidgetContents :: !Text
-}
+data InputWidget = InputWidget
+  { _inputWidgetType :: !InputWidgetType,
+    _inputWidgetPrompt :: !Text,
+    _inputWidgetContents :: !Text
+  }
 
 makeLenses ''InputWidget
 
@@ -188,7 +222,7 @@ newtype OpenBuffers = OpenBuffers (NEMap BufferID Buffer)
 insertBuffer :: Buffer -> OpenBuffers -> OpenBuffers
 insertBuffer buf =
   let bid = buf ^. bufferID
-  in  coerce $ NEMap.insert bid buf
+   in coerce $ NEMap.insert bid buf
 
 -- Unsafe
 getBuffer :: Partial => BufferID -> OpenBuffers -> Buffer
@@ -200,10 +234,7 @@ getBuffer bid (OpenBuffers ob) =
 modifyBuffer :: BufferID -> (Buffer -> Buffer) -> (OpenBuffers -> OpenBuffers)
 modifyBuffer bid f = coerce $ NEMap.adjust f bid
 
-
 -- adjust :: Ord k => (a -> a) -> k -> NEMap k a -> NEMap k a
-  
-
 
 data AppState = AppState
   { _stateDimensions :: (Int, Int),
@@ -221,17 +252,18 @@ makeLenses ''AppState
 
 -- todo make these into lenses
 getCurrentBuffer :: AppState -> Buffer
-getCurrentBuffer s = getBuffer (s ^. currentBufferID) (s ^. stateOpenBuffers) 
+getCurrentBuffer s = getBuffer (s ^. currentBufferID) (s ^. stateOpenBuffers)
 
 currentBufferID :: Lens' AppState BufferID
 currentBufferID = stateWindow . windowBuffer
 
 modifyCurrentBuffer :: (Buffer -> Buffer) -> AppState -> AppState
 modifyCurrentBuffer f s = s |> stateOpenBuffers %~ modifyBuffer bid f
-  where bid = s ^. currentBufferID
-  
+  where
+    bid = s ^. currentBufferID
 
-modifyCurrentBufferState :: MonadState AppState m 
-                    => (Buffer -> Buffer)
-                    -> m ()
+modifyCurrentBufferState ::
+  MonadState AppState m =>
+  (Buffer -> Buffer) ->
+  m ()
 modifyCurrentBufferState f = modify $ modifyCurrentBuffer f
