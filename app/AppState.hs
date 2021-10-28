@@ -86,39 +86,19 @@ compareRange x (a, b)
   | x < b = EQ
   | otherwise = GT
 
-clampCursorToViewPort :: BufferContents -> Window -> Window
-clampCursorToViewPort bufContents win@Window {_winTopLine, _winRect} =
+clampCursor :: BufferContents -> Window -> Window
+clampCursor bufContents win@Window {_winTopLine, _winRect} =
   win |> winCursorLocation
     %~ Cursor.moveCursor
       bufContents
-      (Cursor.clampCursorToViewPort _winTopLine _winRect)
-
--- TODO: simplify using clampCursorToViewPort function
+      (Cursor.clampCursorToViewPort _winTopLine _winRect >> Cursor.clampCursorToBufferHeight)
 
 -- | ensures cursor remains within the viewport
 scrollWindow :: Int -> BufferContents -> Window -> Window
-scrollWindow n bufContents win@Window {..} =
-  win {_winTopLine = newTopLine, _winCursorLocation = cursor'}
-  where
-    -- todo refactor: shouldn't be able to access representation of bufLines
-    newTopLine = clamp 0 (Buffer.lineCount bufContents) (_winTopLine + n)
-
-    BufferLocation curCol curLine = _winCursorLocation
-    cursor' = case compareRange curLine (newTopLine, newTopLine + rectHeight _winRect) of
-      EQ -> _winCursorLocation
-      -- for LT or GT, we've scrolled the cursor out of view, so we clamp the
-      -- cursor vertically to the viewport.
-      -- now it is on either the top or bottom line of the viewport.
-      -- we also clamp the cursor's horizontal position to the length of that line
-      _ -> BufferLocation curCol' curLine'
-        where
-          Rect _ (_, winHeight) = _winRect
-          curLine' = clamp newTopLine (newTopLine + winHeight) curLine
-          curCol' = clamp 0 lineWidth curCol
-
-          -- todo refactor: shouldn't be able to access representation of bufLines
-          lineWidth :: Int
-          lineWidth = Buffer.lineLength curLine' bufContents
+scrollWindow n bufContents win@Window {_winTopLine} =
+  win
+    |> winTopLine .~ clamp 0 (Buffer.lineCount bufContents - 1) (_winTopLine + n)
+    |> clampCursor bufContents
 
 data EditorMode = NormalMode | InsertMode
 

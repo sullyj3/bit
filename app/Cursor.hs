@@ -16,6 +16,7 @@ module Cursor
     moveStartOfLine,
     moveEndOfLine,
     moveRelative,
+    clampCursorToBufferHeight,
     clampCursorToViewPort,
   )
 where
