@@ -10,7 +10,25 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Buffer where
+module Buffer
+  ( Buffer (..),
+    bufferFilePath,
+    bufferLines,
+    bufferChanged,
+    bufferLocTop,
+    BufferLocation (..),
+    BufferID (..),
+    BufferContents,
+    Buffer.empty,
+    locCol,
+    locLine,
+    lineCount,
+    lineLength,
+    insertChar,
+    insertNewLine,
+    deleteChar,
+  openFile,mkInitialBuffer)
+where
 
 import Control.Exception (IOException, catch)
 import qualified Data.Sequence as Seq
@@ -21,8 +39,8 @@ import Relude
 import qualified TextUtils as T
 
 data BufferLocation = BufferLocation
-  { _cursorColumn :: Int,
-    _cursorLine :: Int
+  { _locCol :: Int,
+    _locLine :: Int
   }
   deriving (Show)
 
