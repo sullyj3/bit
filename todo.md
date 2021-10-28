@@ -2,6 +2,7 @@
 ## In progress
 
 ## todo
+- [ ] fix bugs around beginning and end of lines
 - [ ] creating a new buffer
 - [ ] add error message for saving when the buffer has no path yet
 - [ ] I, a, A, o, O
