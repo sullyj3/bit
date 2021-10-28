@@ -8,6 +8,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 import AppState
+import Buffer (Buffer, BufferID (..), newEmptyBuffer)
 import Control.Exception (bracket)
 import Control.Monad.RWS.Strict (RWST (runRWST))
 import qualified Data.Map.NonEmpty as NEMap
