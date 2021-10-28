@@ -13,7 +13,8 @@
 
 module HandleEvents where
 
-import AppState (AppState (..), Buffer (..), BufferID (..), CursorLocation (..), EditorMode (..), InputWidget (..), InputWidgetType (InputWidgetSaveAsPath), Rect (..), Window (..), bufDeleteChar, bufGetLineLength, bufInsertChar, bufInsertNewLine, bufferLines, getCurrentBuffer, insertBuffer, modifyCurrentBuffer, modifyCurrentBufferState, moveCursor, newEmptyBuffer, scrollWindow, stateCurrInputWidget, stateDimensions, stateLastEvent, stateMode, stateNextBufID, stateOpenBuffers, stateStatusMessage, stateWindow, winCursorLocation, windowFromBufID)
+import AppState
+import Buffer
 import Control.Exception (IOException, catch)
 import Control.Monad.RWS.Strict (RWST)
 import qualified Data.Sequence as Seq
@@ -113,7 +114,7 @@ handleInsertModeCmd :: MonadState AppState m => Command 'InsertModeCmd -> m Shou
 handleInsertModeCmd =
   (Continue <$) . \case
     CmdEnterNormalMode -> stateMode .= NormalMode
-    CmdInsertChar c -> modify $ insertChar c
+    CmdInsertChar c -> modify $ HandleEvents.insertChar c
     CmdBackspace -> modify backspace
     CmdInsertNewline -> modify insertNewline
     CmdDel -> modify del

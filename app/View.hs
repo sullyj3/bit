@@ -8,6 +8,10 @@
 module View where
 
 import AppState
+import Buffer
+  ( Buffer (Buffer, _bufferChanged, _bufferFilePath, _bufferLines),
+    CursorLocation (CursorLocation),
+  )
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as L
@@ -29,7 +33,7 @@ viewMainWindow s
     Window {..} = s ^. stateWindow
     howToQuit = string defAttr "press Q to exit"
     CursorLocation curCol curLine = _winCursorLocation
-    Buffer{_bufferLines} = getCurrentBuffer s
+    Buffer {_bufferLines} = getCurrentBuffer s
     (winWidth, winHeight) = _winRect |> rectDimensions
     showStartMsg = _winShowStartMessage
 
@@ -91,8 +95,9 @@ statusBar :: AppState -> Bool -> Image
 statusBar appState _showDiagnostics =
   case appState ^. stateStatusMessage of
     Just msg -> text defAttr (fromStrict msg)
-    Nothing -> horizCat
-      [modeWidget, middlePadding, currFileWidget, rightPadding]
+    Nothing ->
+      horizCat
+        [modeWidget, middlePadding, currFileWidget, rightPadding]
   where
     (w, _) = appState ^. stateDimensions
 
@@ -121,15 +126,14 @@ statusBar appState _showDiagnostics =
     currFileWidget :: Image
     currFileWidget = string defAttr $ path <> modifiedString
       where
-        Buffer {..} = getCurrentBuffer appState 
+        Buffer {..} = getCurrentBuffer appState
 
         path = fromMaybe "new file" _bufferFilePath
 
         modifiedString :: String
-        modifiedString | _bufferChanged = "*"
-                       | otherwise = ""
-
-    
+        modifiedString
+          | _bufferChanged = "*"
+          | otherwise = ""
 
     rightPadding = char barBgAttr ' '
 
