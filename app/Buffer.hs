@@ -12,6 +12,7 @@
 
 module Buffer where
 
+import Control.Exception (IOException, catch)
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 import Flow ((|>))
@@ -87,3 +88,28 @@ insertNewLine (BufferLocation col line) = edit go
 deleteChar :: BufferLocation -> Buffer -> Buffer
 deleteChar (BufferLocation col line) =
   edit $ Seq.adjust' (T.deleteChar col) line
+
+--------
+-- IO --
+--------
+
+-- creates a new empty buffer if there is no existing file at the path
+openFile :: FilePath -> IO Buffer
+openFile path =
+  tryOpenFile `catch` orCreateNewBuffer
+  where
+    tryOpenFile :: IO Buffer
+    tryOpenFile = do
+      theLines <- Seq.fromList . lines <$> readFileText path
+      pure $ Buffer (Just path) theLines False
+
+    -- If the file isn't present, create an empty buffer
+    -- TODO figure out how to check that it's the right IO exception, from memory
+    -- I think we may have to resort to string comparison
+    orCreateNewBuffer :: IOException -> IO Buffer
+    orCreateNewBuffer _ = pure $ Buffer.empty {_bufferFilePath = Just path}
+
+mkInitialBuffer :: Maybe FilePath -> IO Buffer
+mkInitialBuffer = \case
+  Just fp -> openFile fp
+  Nothing -> pure Buffer.empty

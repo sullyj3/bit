@@ -41,9 +41,7 @@ import AppState
   )
 import Buffer (Buffer (..), BufferID, bufferLines)
 import qualified Buffer
-import Control.Exception (IOException, catch)
 import Control.Monad.RWS.Strict (RWST)
-import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 import Graphics.Vty hiding (update)
 import Lens.Micro.Platform
@@ -96,7 +94,7 @@ handleNormalModeCmd cmd = do
         stateWindow %= (\win -> win {_winShowStartMessage = False})
     CmdQuit -> pure Quit
     CmdOpenFile fp -> do
-      buf <- liftIO $ openFile fp
+      buf <- liftIO $ Buffer.openFile fp
       dims <- use stateDimensions
       bid <- newBufferID
       stateOpenBuffers %= insertBuffer bid buf
@@ -235,19 +233,3 @@ handleEventWindow ev =
         EvKey KDel [] -> Just CmdDel
         EvKey KEnter [] -> Just CmdInsertNewline
         _ -> Nothing
-
--- creates a new empty buffer if there is no existing file at the path
-openFile :: FilePath -> IO Buffer
-openFile path =
-  tryOpenFile `catch` orCreateNewBuffer
-  where
-    tryOpenFile :: IO Buffer
-    tryOpenFile = do
-      theLines <- Seq.fromList . lines <$> readFileText path
-      pure $ Buffer (Just path) theLines False
-
-    -- If the file isn't present, create an empty buffer
-    -- TODO figure out how to check that it's the right IO exception, from memory
-    -- I think we may have to resort to string comparison
-    orCreateNewBuffer :: IOException -> IO Buffer
-    orCreateNewBuffer _ = pure $ Buffer.empty {_bufferFilePath = Just path}
