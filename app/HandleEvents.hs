@@ -19,7 +19,6 @@ import Control.Exception (IOException, catch)
 import Control.Monad.RWS.Strict (RWST)
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
-import Flow ((|>))
 import Graphics.Vty hiding (update)
 import Lens.Micro.Platform
 import Relude
@@ -114,64 +113,14 @@ handleInsertModeCmd :: MonadState AppState m => Command 'InsertModeCmd -> m Shou
 handleInsertModeCmd =
   (Continue <$) . \case
     CmdEnterNormalMode -> stateMode .= NormalMode
-    CmdInsertChar c -> modify $ HandleEvents.insertChar c
+    CmdInsertChar c -> modify $ AppState.insertChar c
     CmdBackspace -> modify backspace
     CmdInsertNewline -> modify insertNewline
     CmdDel -> modify del
 
-insertChar :: Char -> AppState -> AppState
-insertChar c s =
-  s |> modifyCurrentBuffer (const buf')
-    |> stateWindow .~ win'
-  where
-    -- first modify the buffer
-    cursorLoc = s ^. stateWindow . winCursorLocation
-    buf' = bufInsertChar c cursorLoc (getCurrentBuffer s)
-    -- then move the cursor
-    win' = moveCursor (1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
-
--- TODO consider case where we're deleting the last character in the line
-backspace :: AppState -> AppState
-backspace s =
-  s |> modifyCurrentBuffer (const buf')
-    |> stateWindow .~ win'
-  where
-    -- first modify the buffer
-    CursorLocation col line = s ^. stateWindow . winCursorLocation
-    buf' = bufDeleteChar (CursorLocation (col -1) line) (getCurrentBuffer s)
-    -- then move the cursor
-    win' = moveCursor (-1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
-
--- TODO consider case where we're deleting the last character in the line
--- delete the character at the cursor. If we were on the last character,
--- move the cursor back one
-del :: AppState -> AppState
-del s =
-  s |> modifyCurrentBuffer (const buf')
-    |> stateWindow .~ win'
-  where
-    loc@(CursorLocation col line) = s ^. stateWindow . winCursorLocation
-    buf' = bufDeleteChar loc (getCurrentBuffer s)
-
-    win = s ^. stateWindow
-    lenCurrLine = bufGetLineLength line buf'
-    win'
-      | col == lenCurrLine = moveCursor (-1, 0) (buf' ^. bufferLines) win
-      | otherwise = win
-
-insertNewline :: AppState -> AppState
-insertNewline s =
-  s |> modifyCurrentBuffer (const buf')
-    |> stateWindow %~ moveCursor (0, 1) (buf' ^. bufferLines)
-  where
-    loc = s ^. stateWindow . winCursorLocation
-    buf' = bufInsertNewLine loc (getCurrentBuffer s)
-
 data ShouldQuit = Quit | Continue
   deriving (Show)
 
-removeTemporaryMessage :: App ()
-removeTemporaryMessage = stateStatusMessage .= Nothing
 
 setStatusMessage :: Text -> App ()
 setStatusMessage t = stateStatusMessage .= Just t
@@ -183,7 +132,7 @@ handleEvent = do
 
   ev <- liftIO $ nextEvent vty
   stateLastEvent ?= ev
-  removeTemporaryMessage
+  stateStatusMessage .= Nothing
 
   case ev of
     EvResize w h -> do
