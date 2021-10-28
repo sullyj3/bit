@@ -1,6 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
@@ -54,6 +55,7 @@ bufferLocTop = BufferLocation 0 0
 newtype BufferID = BufferID Int
   deriving (Eq, Show, Ord, Enum)
 
+-- todo: make this an abstract newtype
 type BufferContents = Seq Text
 
 data Buffer = Buffer
@@ -73,12 +75,12 @@ empty =
       _bufferChanged = False
     }
 
-lineCount :: Buffer -> Int
-lineCount Buffer {_bufferLines} = Seq.length _bufferLines
+lineCount :: BufferContents -> Int
+lineCount = Seq.length
 
-lineLength :: Int -> Buffer -> Int
-lineLength line Buffer {_bufferLines} =
-  T.length $ Seq.index _bufferLines line
+lineLength :: Int -> BufferContents -> Int
+lineLength line contents =
+  T.length $ Seq.index contents line
 
 edit ::
   (BufferContents -> BufferContents) ->

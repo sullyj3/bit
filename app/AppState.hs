@@ -13,6 +13,7 @@ module AppState where
 
 import Buffer (Buffer (..), BufferContents, BufferID (..), BufferLocation (..), bufferLines)
 import qualified Buffer
+import qualified Cursor
 import Data.Map.NonEmpty (NEMap)
 import qualified Data.Map.NonEmpty as NEMap
 import qualified Data.Sequence as Seq
@@ -20,6 +21,7 @@ import qualified Data.Text as T
 import Flow ((<|), (|>))
 import Graphics.Vty (Event)
 import Lens.Micro.Platform (Lens', makeLenses, (%~), (.~), (^.))
+import Misc (clamp)
 import Relude
 import Safe.Partial (Partial)
 
@@ -62,34 +64,31 @@ windowFromBufID rect buf showStartMsg =
       _winShowStartMessage = showStartMsg
     }
 
--- This function is safe - ensures the cursor stays inside the buffer, and doesn't move beyond the end of a line.
--- It scrolls the viewPoint to keep the cursor in view if necessary
-moveCursor :: (Int, Int) -> BufferContents -> Window -> Window
-moveCursor (dx, dy) bufLines win@Window {..} =
-  win
-    |> winCursorLocation .~ newCursorLocation
-    |> winTopLine .~ topLine'
+-- Scrolls the viewPoint to keep the cursor in view if necessary
+moveCursorWin :: (Int, Int) -> BufferContents -> Window -> Window
+moveCursorWin (dx, dy) bufContents win@Window {_winCursorLocation} =
+  scrollViewportToCursor $ win {_winCursorLocation = newCursorLocation}
   where
-    BufferLocation currCol currLine = win ^. winCursorLocation
+    newCursorLocation =
+      Cursor.moveCursor bufContents (Cursor.moveRelative (dx, dy)) _winCursorLocation
 
-    currLine' = clamp 0 (currLine + dy) (Seq.length bufLines - 1)
-    currentLine = bufLines `Seq.index` currLine'
+scrollViewportToCursor :: Window -> Window
+scrollViewportToCursor win@Window {..} =
+  win {_winTopLine = topLine'}
+  where
+    Rect _ (_, winHeight) = _winRect
+    (BufferLocation _ line) = _winCursorLocation
 
-    currCol' = clamp 0 (currCol + dx) (T.length currentLine -1)
-    newCursorLocation = BufferLocation currCol' currLine'
-
-    Rect _ (_, winHeight) = win ^. winRect
-
-    topLine' = case compareRange currLine' (_winTopLine, _winTopLine + winHeight) of
+    topLine' = case compareRange line (_winTopLine, _winTopLine + winHeight) of
       -- new current line is above the viewport, so we move upwards, setting it
       -- to the top line of the viewport
-      LT -> currLine'
+      LT -> line
       -- new current line is within the current viewport, so we keep the top line the same
       EQ -> _winTopLine
       -- new current line is below the viewport, so we move down, and make the
       -- new current line the bottom line in the window
       -- TODO: unit tests, I think this can potentially become negative and it shouldn't
-      GT -> currLine' - winHeight + 1
+      GT -> line - winHeight + 1
 
 -- check whether an int is less than, within, or greater than a half-open interval
 compareRange :: Int -> (Int, Int) -> Ordering
@@ -98,12 +97,15 @@ compareRange x (a, b)
   | x < b = EQ
   | otherwise = GT
 
+-- TODO: simplify, making use of scrollViewportToCursor
+
 -- | ensures cursor remains within the viewport
 scrollWindow :: Int -> BufferContents -> Window -> Window
 scrollWindow n bufLines win@Window {..} =
   win {_winTopLine = newTopLine, _winCursorLocation = cursor'}
   where
-    newTopLine = clamp 0 (_winTopLine + n) (Seq.length bufLines)
+    -- todo refactor: shouldn't be able to access representation of bufLines
+    newTopLine = clamp 0 (Seq.length bufLines) (_winTopLine + n)
 
     BufferLocation curCol curLine = _winCursorLocation
     cursor' = case compareRange curLine (newTopLine, newTopLine + rectHeight _winRect) of
@@ -115,14 +117,12 @@ scrollWindow n bufLines win@Window {..} =
       _ -> BufferLocation curCol' curLine'
         where
           Rect _ (_, winHeight) = _winRect
-          curLine' = clamp newTopLine curLine (newTopLine + winHeight)
-          curCol' = clamp 0 curCol lineWidth
+          curLine' = clamp newTopLine (newTopLine + winHeight) curLine
+          curCol' = clamp 0 lineWidth curCol
 
+          -- todo refactor: shouldn't be able to access representation of bufLines
           lineWidth :: Int
           lineWidth = T.length <| bufLines `Seq.index` curLine'
-
-clamp :: Ord a => a -> a -> a -> a
-clamp a x b = max a (min x b)
 
 data EditorMode = NormalMode | InsertMode
 
@@ -193,7 +193,7 @@ insertChar c s =
     cursorLoc = s ^. stateWindow . winCursorLocation
     buf' = Buffer.insertChar c cursorLoc (getCurrentBuffer s)
     -- then move the cursor
-    win' = moveCursor (1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
+    win' = moveCursorWin (1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
 
 -- TODO consider case where we're deleting the last character in the line
 backspace :: AppState -> AppState
@@ -205,7 +205,7 @@ backspace s =
     BufferLocation col line = s ^. stateWindow . winCursorLocation
     buf' = Buffer.deleteChar (BufferLocation (col -1) line) (getCurrentBuffer s)
     -- then move the cursor
-    win' = moveCursor (-1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
+    win' = moveCursorWin (-1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
 
 -- TODO consider case where we're deleting the last character in the line
 -- delete the character at the cursor. If we were on the last character,
@@ -219,15 +219,15 @@ del s =
     buf' = Buffer.deleteChar loc (getCurrentBuffer s)
 
     win = s ^. stateWindow
-    lenCurrLine = Buffer.lineLength line buf'
+    lenCurrLine = Buffer.lineLength line $ buf' ^. bufferLines
     win'
-      | col == lenCurrLine = moveCursor (-1, 0) (buf' ^. bufferLines) win
+      | col == lenCurrLine = moveCursorWin (-1, 0) (buf' ^. bufferLines) win
       | otherwise = win
 
 insertNewline :: AppState -> AppState
 insertNewline s =
   s |> modifyCurrentBuffer (const buf')
-    |> stateWindow %~ moveCursor (0, 1) (buf' ^. bufferLines)
+    |> stateWindow %~ moveCursorWin (0, 1) (buf' ^. bufferLines)
   where
     loc = s ^. stateWindow . winCursorLocation
     buf' = Buffer.insertNewLine loc (getCurrentBuffer s)

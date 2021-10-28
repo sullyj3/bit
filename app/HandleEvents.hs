@@ -27,7 +27,7 @@ import AppState
     insertChar,
     insertNewline,
     modifyCurrentBufferState,
-    moveCursor,
+    moveCursorWin,
     scrollWindow,
     stateCurrInputWidget,
     stateDimensions,
@@ -86,7 +86,7 @@ handleNormalModeCmd cmd = do
   case cmd of
     CmdMoveCursorRelative v ->
       Continue
-        <$ (stateWindow %= moveCursor v bufLines)
+        <$ (stateWindow %= moveCursorWin v bufLines)
     CmdScroll n -> Continue <$ (stateWindow %= scrollWindow n bufLines)
     CmdEnterInsertMode ->
       Continue <$ do
