@@ -240,8 +240,6 @@ getBuffer bid (OpenBuffers ob) =
 modifyBuffer :: BufferID -> (Buffer -> Buffer) -> (OpenBuffers -> OpenBuffers)
 modifyBuffer bid f = coerce $ NEMap.adjust f bid
 
--- adjust :: Ord k => (a -> a) -> k -> NEMap k a -> NEMap k a
-
 data AppState = AppState
   { _stateDimensions :: (Int, Int),
     _stateLastEvent :: Maybe Event,
