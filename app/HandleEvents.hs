@@ -13,7 +13,7 @@
 
 module HandleEvents where
 
-import AppState (AppState (..), Buffer (..), BufferID (..), CursorLocation (..), InputWidget (..), Rect(..), Window (..), bufInsertChar, EditorMode (..), stateNextBufID, getCurrentBuffer, stateWindow, moveCursor, scrollWindow, stateMode, stateDimensions, stateOpenBuffers, insertBuffer, windowFromBufID, bufferID, modifyCurrentBufferState, stateCurrInputWidget, InputWidgetType (InputWidgetSaveAsPath), modifyCurrentBuffer, bufferLines, winCursorLocation, bufInsertNewLine, stateStatusMessage, stateLastEvent, newEmptyBuffer, bufDeleteChar, bufGetLineLength)
+import AppState (AppState (..), Buffer (..), BufferID (..), CursorLocation (..), EditorMode (..), InputWidget (..), InputWidgetType (InputWidgetSaveAsPath), Rect (..), Window (..), bufDeleteChar, bufGetLineLength, bufInsertChar, bufInsertNewLine, bufferLines, getCurrentBuffer, insertBuffer, modifyCurrentBuffer, modifyCurrentBufferState, moveCursor, newEmptyBuffer, scrollWindow, stateCurrInputWidget, stateDimensions, stateLastEvent, stateMode, stateNextBufID, stateOpenBuffers, stateStatusMessage, stateWindow, winCursorLocation, windowFromBufID)
 import Control.Exception (IOException, catch)
 import Control.Monad.RWS.Strict (RWST)
 import qualified Data.Sequence as Seq
@@ -70,10 +70,11 @@ handleNormalModeCmd cmd = do
         stateWindow %= (\win -> win {_winShowStartMessage = False})
     CmdQuit -> pure Quit
     CmdOpenFile fp -> do
-      buf <- openFile fp
+      buf <- liftIO $ openFile fp
       dims <- use stateDimensions
-      stateOpenBuffers %= insertBuffer buf
-      let window = windowFromBufID (rectFullScreen dims) (buf ^. bufferID) False
+      bid <- newBufferID
+      stateOpenBuffers %= insertBuffer bid buf
+      let window = windowFromBufID (rectFullScreen dims) bid False
       stateWindow .= window
       pure Continue
     CmdSave -> do
@@ -261,24 +262,17 @@ handleEventWindow ev =
         _ -> Nothing
 
 -- creates a new empty buffer if there is no existing file at the path
-openFile :: FilePath -> App Buffer
-openFile path = do
-  bid <- newBufferID
-  liftIO $ openFileIO path bid        
-
-openFileIO :: FilePath -> BufferID -> IO Buffer
-openFileIO path bid = 
+openFile :: FilePath -> IO Buffer
+openFile path =
   tryOpenFile `catch` orCreateNewBuffer
-    where
-      tryOpenFile :: IO Buffer
-      tryOpenFile = do
-        theLines <- Seq.fromList . lines <$> readFileText path
-        pure $ Buffer bid (Just path) theLines False
+  where
+    tryOpenFile :: IO Buffer
+    tryOpenFile = do
+      theLines <- Seq.fromList . lines <$> readFileText path
+      pure $ Buffer (Just path) theLines False
 
-      -- If the file isn't present, create an empty buffer
-      -- TODO figure out how to check that it's the right IO exception, from memory
-      -- I think we may have to resort to string comparison
-      orCreateNewBuffer :: IOException -> IO Buffer
-      orCreateNewBuffer _ =
-        pure $
-          (newEmptyBuffer bid) {_bufferFilePath = Just path}
+    -- If the file isn't present, create an empty buffer
+    -- TODO figure out how to check that it's the right IO exception, from memory
+    -- I think we may have to resort to string comparison
+    orCreateNewBuffer :: IOException -> IO Buffer
+    orCreateNewBuffer _ = pure $ newEmptyBuffer {_bufferFilePath = Just path}

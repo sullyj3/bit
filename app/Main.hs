@@ -10,15 +10,14 @@
 import AppState
 import Control.Exception (bracket)
 import Control.Monad.RWS.Strict (RWST (runRWST))
+import qualified Data.Map.NonEmpty as NEMap
 import Flow ((.>))
 import Graphics.Vty hiding (update)
 import qualified Graphics.Vty as Vty
-import HandleEvents (App, ShouldQuit (..), askVty, handleEvent, openFileIO)
+import HandleEvents (App, ShouldQuit (..), askVty, handleEvent, openFile)
 import Relude
 import System.Environment (getArgs)
 import View (viewAppState)
-import qualified Data.Map.NonEmpty as NEMap
-import Lens.Micro.Platform ((^.))
 
 ----------
 -- Main --
@@ -44,14 +43,17 @@ mkInitialState vty AppArgs {..} = do
   initialBuf <- mkInitialBuffer argsFileToOpen
   let windowRect = Rect (0, 0) (w, h -1)
       initialWindow = mkInitialWindow windowRect argsFileToOpen initialBufferID
-  pure AppState { _stateDimensions = bounds,
-    _stateLastEvent = Nothing,
-    _stateWindow = initialWindow,
-    _stateMode = NormalMode,
-    _stateStatusMessage = Nothing,
-    _stateCurrInputWidget = Nothing,
-    _stateOpenBuffers = OpenBuffers $ NEMap.singleton (initialBuf ^. bufferID) initialBuf,
-    _stateNextBufID = succ (initialBuf ^. bufferID) }
+  pure
+    AppState
+      { _stateDimensions = bounds,
+        _stateLastEvent = Nothing,
+        _stateWindow = initialWindow,
+        _stateMode = NormalMode,
+        _stateStatusMessage = Nothing,
+        _stateCurrInputWidget = Nothing,
+        _stateOpenBuffers = OpenBuffers $ NEMap.singleton initialBufferID initialBuf,
+        _stateNextBufID = succ initialBufferID
+      }
 
 mkInitialWindow :: Rect -> Maybe FilePath -> BufferID -> Window
 mkInitialWindow rect fp buf =
@@ -61,8 +63,8 @@ mkInitialWindow rect fp buf =
 
 mkInitialBuffer :: Maybe FilePath -> IO Buffer
 mkInitialBuffer = \case
-  Just fp -> openFileIO fp initialBufferID
-  Nothing -> pure (newEmptyBuffer initialBufferID)
+  Just fp -> openFile fp
+  Nothing -> pure newEmptyBuffer
 
 main :: IO ()
 main = do

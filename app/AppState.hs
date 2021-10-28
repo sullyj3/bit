@@ -32,8 +32,7 @@ newtype BufferID = BufferID Int
 type BufferContents = Seq Text
 
 data Buffer = Buffer
-  { _bufferID :: BufferID,
-    _bufferFilePath :: Maybe FilePath,
+  { _bufferFilePath :: Maybe FilePath,
     _bufferLines :: BufferContents,
     -- Any function which edits _bufferLines must set this flag
     _bufferChanged :: Bool
@@ -41,11 +40,10 @@ data Buffer = Buffer
 
 makeLenses ''Buffer
 
-newEmptyBuffer :: BufferID -> Buffer
-newEmptyBuffer bid =
+newEmptyBuffer :: Buffer
+newEmptyBuffer =
   Buffer
-    { _bufferID = bid,
-      _bufferFilePath = Nothing,
+    { _bufferFilePath = Nothing,
       _bufferLines = Seq.singleton mempty,
       _bufferChanged = False
     }
@@ -225,12 +223,10 @@ makeLenses ''InputWidget
 -- wish I knew how to enforce that with the type system
 newtype OpenBuffers = OpenBuffers (NEMap BufferID Buffer)
 
-insertBuffer :: Buffer -> OpenBuffers -> OpenBuffers
-insertBuffer buf =
-  let bid = buf ^. bufferID
-   in coerce $ NEMap.insert bid buf
+insertBuffer :: BufferID -> Buffer -> OpenBuffers -> OpenBuffers
+insertBuffer bid buf = coerce $ NEMap.insert bid buf
 
--- Unsafe - attempting to index using a BufferID that doesn't yet exist is a 
+-- Unsafe - attempting to index using a BufferID that doesn't yet exist is a
 -- programmer error
 getBuffer :: Partial => BufferID -> OpenBuffers -> Buffer
 getBuffer bid (OpenBuffers ob) =
