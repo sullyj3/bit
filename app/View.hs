@@ -10,7 +10,7 @@ module View where
 import AppState
 import Buffer
   ( Buffer (Buffer, _bufferChanged, _bufferFilePath, _bufferLines),
-    CursorLocation (CursorLocation),
+    BufferLocation (BufferLocation),
   )
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
@@ -23,7 +23,7 @@ import Relude
 ----------
 -- View --
 ----------
-type CursorLocation = (Int, Int)
+type BufferLocation = (Int, Int)
 
 viewMainWindow :: AppState -> Image
 viewMainWindow s
@@ -32,7 +32,7 @@ viewMainWindow s
   where
     Window {..} = s ^. stateWindow
     howToQuit = string defAttr "press Q to exit"
-    CursorLocation curCol curLine = _winCursorLocation
+    BufferLocation curCol curLine = _winCursorLocation
     Buffer {_bufferLines} = getCurrentBuffer s
     (winWidth, winHeight) = _winRect |> rectDimensions
     showStartMsg = _winShowStartMessage

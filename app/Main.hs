@@ -8,7 +8,8 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 import AppState
-import Buffer (Buffer, BufferID (..), newEmptyBuffer)
+import Buffer (Buffer, BufferID (..))
+import qualified Buffer
 import Control.Exception (bracket)
 import Control.Monad.RWS.Strict (RWST (runRWST))
 import qualified Data.Map.NonEmpty as NEMap
@@ -36,7 +37,7 @@ initialBufferID :: BufferID
 initialBufferID = BufferID 0
 
 mkInitialState :: Vty -> AppArgs -> IO AppState
-mkInitialState vty AppArgs{..} = do
+mkInitialState vty AppArgs {..} = do
   bounds@(w, h) <- liftIO $ Vty.displayBounds $ Vty.outputIface vty
   initialBuf <- mkInitialBuffer argsFileToOpen
   -- h-1 leaves room for the status bar
@@ -63,7 +64,7 @@ mkInitialWindow rect fp buf =
 mkInitialBuffer :: Maybe FilePath -> IO Buffer
 mkInitialBuffer = \case
   Just fp -> openFile fp
-  Nothing -> pure newEmptyBuffer
+  Nothing -> pure Buffer.empty
 
 main :: IO ()
 main = do

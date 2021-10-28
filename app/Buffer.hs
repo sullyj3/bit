@@ -17,16 +17,18 @@ import qualified Data.Text as T
 import Flow ((|>))
 import Lens.Micro.Platform (makeLenses, (%~), (.~))
 import Relude
+import qualified TextUtils as T
 
--- TODO: Is this relative to the window or the buffer? I think it's the buffer
--- regardless, needs to be renamed to make this clearer
-data CursorLocation = CursorLocation
+data BufferLocation = BufferLocation
   { _cursorColumn :: Int,
     _cursorLine :: Int
   }
   deriving (Show)
 
-makeLenses ''CursorLocation
+makeLenses ''BufferLocation
+
+bufferLocTop :: BufferLocation
+bufferLocTop = BufferLocation 0 0
 
 newtype BufferID = BufferID Int
   deriving (Eq, Show, Ord, Enum)
@@ -42,35 +44,35 @@ data Buffer = Buffer
 
 makeLenses ''Buffer
 
-newEmptyBuffer :: Buffer
-newEmptyBuffer =
+empty :: Buffer
+empty =
   Buffer
     { _bufferFilePath = Nothing,
       _bufferLines = Seq.singleton mempty,
       _bufferChanged = False
     }
 
-bufferLineCount :: Buffer -> Int
-bufferLineCount Buffer {_bufferLines} = Seq.length _bufferLines
+lineCount :: Buffer -> Int
+lineCount Buffer {_bufferLines} = Seq.length _bufferLines
 
-bufGetLineLength :: Int -> Buffer -> Int
-bufGetLineLength line Buffer {_bufferLines} =
+lineLength :: Int -> Buffer -> Int
+lineLength line Buffer {_bufferLines} =
   T.length $ Seq.index _bufferLines line
 
-bufEdit ::
+edit ::
   (BufferContents -> BufferContents) ->
   (Buffer -> Buffer)
-bufEdit f buf =
+edit f buf =
   buf
     |> bufferLines %~ f
     |> bufferChanged .~ True
 
-bufInsertChar :: Char -> CursorLocation -> Buffer -> Buffer
-bufInsertChar c (CursorLocation col line) =
-  bufEdit $ Seq.adjust' (insertChar c col) line
+insertChar :: Char -> BufferLocation -> Buffer -> Buffer
+insertChar c (BufferLocation col line) =
+  edit $ Seq.adjust' (T.insertChar c col) line
 
-bufInsertNewLine :: CursorLocation -> Buffer -> Buffer
-bufInsertNewLine (CursorLocation col line) = bufEdit go
+insertNewLine :: BufferLocation -> Buffer -> Buffer
+insertNewLine (BufferLocation col line) = edit go
   where
     go :: BufferContents -> BufferContents
     go bufLines =
@@ -82,19 +84,6 @@ bufInsertNewLine (CursorLocation col line) = bufEdit go
         (l, r) = T.splitAt col theLine
         (top, bottom) = Seq.splitAt line bufLines
 
-bufDeleteChar :: CursorLocation -> Buffer -> Buffer
-bufDeleteChar (CursorLocation col line) =
-  bufEdit $ Seq.adjust' (deleteChar col) line
-
--- TODO probably inefficient, especially for long lines
-insertChar :: Char -> Int -> Text -> Text
-insertChar c i txt = l <> T.singleton c <> r
-  where
-    (l, r) = T.splitAt i txt
-
--- does nothing if i ∉ [0, T.length txt)
-deleteChar :: Int -> Text -> Text
-deleteChar i txt
-  | i < 0 = txt
-  | i >= T.length txt = txt
-  | otherwise = let (l, r) = T.splitAt i txt in l <> T.tail r
+deleteChar :: BufferLocation -> Buffer -> Buffer
+deleteChar (BufferLocation col line) =
+  edit $ Seq.adjust' (T.deleteChar col) line
