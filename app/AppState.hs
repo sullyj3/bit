@@ -16,9 +16,7 @@ import qualified Buffer
 import qualified Cursor
 import Data.Map.NonEmpty (NEMap)
 import qualified Data.Map.NonEmpty as NEMap
-import qualified Data.Sequence as Seq
-import qualified Data.Text as T
-import Flow ((<|), (|>))
+import Flow ((|>))
 import Graphics.Vty (Event)
 import Lens.Micro.Platform (Lens', makeLenses, (%~), (.~), (^.))
 import Misc
@@ -89,21 +87,21 @@ compareRange x (a, b)
   | otherwise = GT
 
 clampCursorToViewPort :: BufferContents -> Window -> Window
-clampCursorToViewPort bufContents win@(Window {_winTopLine, _winRect}) =
+clampCursorToViewPort bufContents win@Window {_winTopLine, _winRect} =
   win |> winCursorLocation
     %~ Cursor.moveCursor
       bufContents
       (Cursor.clampCursorToViewPort _winTopLine _winRect)
 
--- TODO: simplify, could extract out a clampCursorToViewPort function
+-- TODO: simplify using clampCursorToViewPort function
 
 -- | ensures cursor remains within the viewport
 scrollWindow :: Int -> BufferContents -> Window -> Window
-scrollWindow n bufLines win@Window {..} =
+scrollWindow n bufContents win@Window {..} =
   win {_winTopLine = newTopLine, _winCursorLocation = cursor'}
   where
     -- todo refactor: shouldn't be able to access representation of bufLines
-    newTopLine = clamp 0 (Seq.length bufLines) (_winTopLine + n)
+    newTopLine = clamp 0 (Buffer.lineCount bufContents) (_winTopLine + n)
 
     BufferLocation curCol curLine = _winCursorLocation
     cursor' = case compareRange curLine (newTopLine, newTopLine + rectHeight _winRect) of
@@ -120,7 +118,7 @@ scrollWindow n bufLines win@Window {..} =
 
           -- todo refactor: shouldn't be able to access representation of bufLines
           lineWidth :: Int
-          lineWidth = T.length <| bufLines `Seq.index` curLine'
+          lineWidth = Buffer.lineLength curLine' bufContents
 
 data EditorMode = NormalMode | InsertMode
 

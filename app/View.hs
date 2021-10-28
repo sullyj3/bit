@@ -11,6 +11,7 @@ import AppState
 import Buffer
   ( Buffer (Buffer, _bufferChanged, _bufferFilePath, _bufferLines),
     BufferLocation (BufferLocation),
+    getLineRange,
   )
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
@@ -38,7 +39,8 @@ viewMainWindow s
     (winWidth, winHeight) = _winRect |> rectDimensions
     showStartMsg = _winShowStartMessage
 
-    linesToDisplay = Seq.take winHeight $ Seq.drop _winTopLine _bufferLines
+    linesToDisplay =
+      Buffer.getLineRange _winTopLine winHeight _bufferLines
 
     theLines :: Seq Image
     theLines =

@@ -30,6 +30,8 @@ module Buffer
     deleteChar,
     openFile,
     mkInitialBuffer,
+    saveContentsToPath,
+    getLineRange,
   )
 where
 
@@ -55,8 +57,7 @@ bufferLocTop = BufferLocation 0 0
 newtype BufferID = BufferID Int
   deriving (Eq, Show, Ord, Enum)
 
--- todo: make this an abstract newtype
-type BufferContents = Seq Text
+newtype BufferContents = BufferContents {getBufferContents :: Seq Text}
 
 data Buffer = Buffer
   { _bufferFilePath :: Maybe FilePath,
@@ -71,16 +72,16 @@ empty :: Buffer
 empty =
   Buffer
     { _bufferFilePath = Nothing,
-      _bufferLines = Seq.singleton mempty,
+      _bufferLines = BufferContents $ Seq.singleton mempty,
       _bufferChanged = False
     }
 
 lineCount :: BufferContents -> Int
-lineCount = Seq.length
+lineCount = Seq.length . getBufferContents
 
 lineLength :: Int -> BufferContents -> Int
 lineLength line contents =
-  T.length $ Seq.index contents line
+  T.length $ Seq.index (getBufferContents contents) line
 
 edit ::
   (BufferContents -> BufferContents) ->
@@ -92,16 +93,16 @@ edit f buf =
 
 insertChar :: Char -> BufferLocation -> Buffer -> Buffer
 insertChar c (BufferLocation col line) =
-  edit $ Seq.adjust' (T.insertChar c col) line
+  edit $ coerce $ Seq.adjust' (T.insertChar c col) line
 
 insertNewLine :: BufferLocation -> Buffer -> Buffer
 insertNewLine (BufferLocation col line) = edit go
   where
     go :: BufferContents -> BufferContents
-    go bufLines =
+    go (BufferContents bufLines) =
       -- first element of bottom is the current line, we drop it and replace with
       -- the two halves of the split line
-      top <> Seq.fromList [l, r] <> Seq.drop 1 bottom
+      BufferContents $ top <> Seq.fromList [l, r] <> Seq.drop 1 bottom
       where
         theLine = bufLines `Seq.index` line
         (l, r) = T.splitAt col theLine
@@ -109,7 +110,7 @@ insertNewLine (BufferLocation col line) = edit go
 
 deleteChar :: BufferLocation -> Buffer -> Buffer
 deleteChar (BufferLocation col line) =
-  edit $ Seq.adjust' (T.deleteChar col) line
+  edit $ coerce $ Seq.adjust' (T.deleteChar col) line
 
 --------
 -- IO --
@@ -123,7 +124,7 @@ openFile path =
     tryOpenFile :: IO Buffer
     tryOpenFile = do
       theLines <- Seq.fromList . lines <$> readFileText path
-      pure $ Buffer (Just path) theLines False
+      pure $ Buffer (Just path) (BufferContents theLines) False
 
     -- If the file isn't present, create an empty buffer
     -- TODO figure out how to check that it's the right IO exception, from memory
@@ -131,7 +132,17 @@ openFile path =
     orCreateNewBuffer :: IOException -> IO Buffer
     orCreateNewBuffer _ = pure $ Buffer.empty {_bufferFilePath = Just path}
 
+-- TODO: make more efficient using streamly or something
+saveContentsToPath :: FilePath -> BufferContents -> IO ()
+saveContentsToPath path (BufferContents theLines) =
+  writeFileText path (unlines . toList $ theLines)
+
 mkInitialBuffer :: Maybe FilePath -> IO Buffer
 mkInitialBuffer = \case
   Just fp -> openFile fp
   Nothing -> pure Buffer.empty
+
+-- | Warning: representation subject to change
+getLineRange :: Int -> Int -> BufferContents -> Seq Text
+getLineRange start n =
+  Seq.take n . Seq.drop start . getBufferContents

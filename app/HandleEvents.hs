@@ -38,10 +38,11 @@ import AppState
     stateWindow,
     windowFromBufID,
   )
-import Buffer (Buffer (..), BufferID, bufferLines)
+import Buffer (Buffer (..), BufferContents, BufferID, bufferChanged, bufferFilePath, bufferLines)
 import qualified Buffer
 import Control.Monad.RWS.Strict (RWST)
 import qualified Data.Text as T
+import Flow
 import Graphics.Vty hiding (update)
 import Lens.Micro.Platform
 import Misc
@@ -106,8 +107,7 @@ handleNormalModeCmd cmd = do
       case _bufferFilePath of
         Nothing -> openSaveAsDialog
         Just path -> do
-          saveLinesToPath path _bufferLines
-          modifyCurrentBufferState (\buf -> buf {_bufferChanged = False})
+          saveContentsToPath path _bufferLines
           pure Continue
     CmdSaveAs -> openSaveAsDialog
     CmdNewBuffer -> do
@@ -121,10 +121,12 @@ openSaveAsDialog = do
   stateCurrInputWidget .= Just (InputWidget InputWidgetSaveAsPath "path> " contents)
   pure Continue
 
--- TODO: make more efficient using streamly or something
-saveLinesToPath :: FilePath -> Seq Text -> App ()
-saveLinesToPath path theLines = do
-  liftIO $ writeFileText path (unlines . toList $ theLines)
+saveContentsToPath :: FilePath -> BufferContents -> App ()
+saveContentsToPath path bufContents = do
+  liftIO $ Buffer.saveContentsToPath path bufContents
+  modifyCurrentBufferState $
+    (bufferFilePath ?~ path)
+      .> (bufferChanged .~ False)
   setStatusMessage $ "saved to " <> T.pack path
 
 rectFullScreen :: (Int, Int) -> Rect
@@ -190,8 +192,7 @@ handleEventInputWidget iw@InputWidget {..} ev = case ev of
       else do
         let path :: FilePath
             path = T.unpack _inputWidgetContents
-        saveLinesToPath path bufLines
-        modifyCurrentBufferState (\buf -> buf {_bufferFilePath = Just path})
+        saveContentsToPath path bufLines
         setStatusMessage $ "Saved to " <> T.pack path
     stateCurrInputWidget .= Nothing
     pure Continue
