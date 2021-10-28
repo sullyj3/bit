@@ -21,22 +21,13 @@ import qualified Data.Text as T
 import Flow ((<|), (|>))
 import Graphics.Vty (Event)
 import Lens.Micro.Platform (Lens', makeLenses, (%~), (.~), (^.))
-import Misc (clamp)
+import Misc
 import Relude
 import Safe.Partial (Partial)
 
 -----------
 -- State --
 -----------
-
-data Rect = Rect
-  { rectTopLeft :: (Int, Int),
-    rectDimensions :: (Int, Int)
-  }
-  deriving (Show)
-
-rectHeight :: Rect -> Int
-rectHeight (Rect _ (_, h)) = h
 
 -- TODO make a damn decision about whether to allow multiple windows,
 -- stick to tabs like Amp, or run as a server and let the WM/multiplexer handle
@@ -97,7 +88,14 @@ compareRange x (a, b)
   | x < b = EQ
   | otherwise = GT
 
--- TODO: simplify, making use of scrollViewportToCursor
+clampCursorToViewPort :: BufferContents -> Window -> Window
+clampCursorToViewPort bufContents win@(Window {_winTopLine, _winRect}) =
+  win |> winCursorLocation
+    %~ Cursor.moveCursor
+      bufContents
+      (Cursor.clampCursorToViewPort _winTopLine _winRect)
+
+-- TODO: simplify, could extract out a clampCursorToViewPort function
 
 -- | ensures cursor remains within the viewport
 scrollWindow :: Int -> BufferContents -> Window -> Window

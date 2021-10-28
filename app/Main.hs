@@ -17,6 +17,7 @@ import Flow ((.>))
 import Graphics.Vty (Vty)
 import qualified Graphics.Vty as Vty
 import HandleEvents (App, ShouldQuit (..), askVty, handleEvent)
+import Misc
 import Relude
 import System.Environment (getArgs)
 import View (viewAppState)

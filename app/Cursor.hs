@@ -16,11 +16,12 @@ module Cursor
     moveStartOfLine,
     moveEndOfLine,
     moveRelative,
+    clampCursorToViewPort,
   )
 where
 
 import Buffer
-import Flow
+-- import Flow
 import Lens.Micro.Platform (use, (%=), (.=))
 import Misc
 import Relude
@@ -63,8 +64,22 @@ widthCurrLine = do
 
 moveRelative :: (Int, Int) -> CursorMovement ()
 moveRelative (dx, dy) = do
+  locLine %= (+ dy)
+  clampCursorToBufferHeight
+  locCol %= (+ dx)
+  clampCursorToCurrentLineWidth
+
+clampCursorToBufferHeight :: CursorMovement ()
+clampCursorToBufferHeight = do
   height <- lineCount <$> ask
-  locLine %= (+ dy) .> clamp 0 height
+  locLine %= clamp 0 (height -1)
+
+clampCursorToCurrentLineWidth :: CursorMovement ()
+clampCursorToCurrentLineWidth = do
   width <- widthCurrLine
-  locCol %= (+ dx) .> clamp 0 width
-  cursorMovementDone
+  locCol %= clamp 0 (width -1)
+
+clampCursorToViewPort :: Int -> Rect -> CursorMovement ()
+clampCursorToViewPort topLine rect = do
+  locLine %= clamp topLine (topLine + rectHeight rect - 1)
+  clampCursorToCurrentLineWidth

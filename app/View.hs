@@ -18,6 +18,7 @@ import qualified Data.Text.Lazy as L
 import Flow ((|>))
 import Graphics.Vty hiding (update)
 import Lens.Micro.Platform ((^.))
+import Misc
 import Relude
 
 ----------

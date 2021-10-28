@@ -18,7 +18,6 @@ import AppState
     EditorMode (InsertMode, NormalMode),
     InputWidget (..),
     InputWidgetType (InputWidgetSaveAsPath),
-    Rect (Rect),
     Window (_winShowStartMessage),
     backspace,
     del,
@@ -45,6 +44,7 @@ import Control.Monad.RWS.Strict (RWST)
 import qualified Data.Text as T
 import Graphics.Vty hiding (update)
 import Lens.Micro.Platform
+import Misc
 import Relude
 
 type App a = RWST Vty () AppState IO a
