@@ -10,6 +10,7 @@
 import AppState
 import Control.Exception (bracket)
 import Control.Monad.RWS.Strict (RWST (runRWST))
+import qualified Data.Map.NonEmpty as NEMap
 import Flow ((.>))
 import Graphics.Vty hiding (update)
 import qualified Graphics.Vty as Vty
@@ -30,6 +31,9 @@ parseArgs args = case args of
   [fp] -> Just . AppArgs . Just $ fp
   _ -> Nothing
 
+initialBufferID :: BufferID
+initialBufferID = BufferID 0
+
 mkInitialState :: Vty -> AppArgs -> IO AppState
 mkInitialState vty AppArgs {..} = do
   bounds <- liftIO $ displayBounds $ outputIface vty
@@ -38,17 +42,22 @@ mkInitialState vty AppArgs {..} = do
   -- TODO this is a bug waiting to happen, figure out something more principled
   initialBuf <- mkInitialBuffer argsFileToOpen
   let windowRect = Rect (0, 0) (w, h -1)
-      initialWindow = mkInitialWindow windowRect argsFileToOpen initialBuf
-  pure AppState { _stateDimensions = bounds,
-    _stateLastEvent = Nothing,
-    _stateWindow = initialWindow,
-    _stateMode = NormalMode,
-    _stateStatusMessage = Nothing,
-    _stateCurrInputWidget = Nothing }
+      initialWindow = mkInitialWindow windowRect argsFileToOpen initialBufferID
+  pure
+    AppState
+      { _stateDimensions = bounds,
+        _stateLastEvent = Nothing,
+        _stateWindow = initialWindow,
+        _stateMode = NormalMode,
+        _stateStatusMessage = Nothing,
+        _stateCurrInputWidget = Nothing,
+        _stateOpenBuffers = OpenBuffers $ NEMap.singleton initialBufferID initialBuf,
+        _stateNextBufID = succ initialBufferID
+      }
 
-mkInitialWindow :: Rect -> Maybe FilePath -> Buffer -> Window
+mkInitialWindow :: Rect -> Maybe FilePath -> BufferID -> Window
 mkInitialWindow rect fp buf =
-  windowFromBuf rect buf case fp of
+  windowFromBufID rect buf case fp of
     Just _ -> False
     Nothing -> True
 

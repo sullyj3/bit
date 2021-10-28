@@ -2,8 +2,6 @@
 ## In progress
 
 ## todo
-- [ ] display error message when trying to save a file with no path
-  in future maybe just automatically open the save as dialog
 - [ ] creating a new buffer
 - [ ] add error message for saving when the buffer has no path yet
 - [ ] I, a, A, o, O
