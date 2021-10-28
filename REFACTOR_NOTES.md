@@ -1,5 +1,3 @@
 todo
 - rename CursorLocation to BufferLocation
-- factor Buffer out of AppState
-- factor state transformation functions out of handleevents 
-
+- move text manipulation functions from buffer to their own module

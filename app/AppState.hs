@@ -11,12 +11,8 @@
 
 module AppState where
 
-import Buffer
-  ( Buffer,
-    BufferContents,
-    BufferID,
-    CursorLocation (CursorLocation), bufInsertChar, bufferLines, bufDeleteChar, bufGetLineLength, bufInsertNewLine
-  )
+import Buffer (Buffer (..), BufferContents, BufferID (..), CursorLocation (..), bufferLines)
+import qualified Buffer
 import Data.Map.NonEmpty (NEMap)
 import qualified Data.Map.NonEmpty as NEMap
 import qualified Data.Sequence as Seq
@@ -200,7 +196,7 @@ insertChar c s =
   where
     -- first modify the buffer
     cursorLoc = s ^. stateWindow . winCursorLocation
-    buf' = bufInsertChar c cursorLoc (getCurrentBuffer s)
+    buf' = Buffer.insertChar c cursorLoc (getCurrentBuffer s)
     -- then move the cursor
     win' = moveCursor (1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
 
@@ -212,7 +208,7 @@ backspace s =
   where
     -- first modify the buffer
     CursorLocation col line = s ^. stateWindow . winCursorLocation
-    buf' = bufDeleteChar (CursorLocation (col -1) line) (getCurrentBuffer s)
+    buf' = Buffer.deleteChar (CursorLocation (col -1) line) (getCurrentBuffer s)
     -- then move the cursor
     win' = moveCursor (-1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
 
@@ -225,10 +221,10 @@ del s =
     |> stateWindow .~ win'
   where
     loc@(CursorLocation col line) = s ^. stateWindow . winCursorLocation
-    buf' = bufDeleteChar loc (getCurrentBuffer s)
+    buf' = Buffer.deleteChar loc (getCurrentBuffer s)
 
     win = s ^. stateWindow
-    lenCurrLine = bufGetLineLength line buf'
+    lenCurrLine = Buffer.lineLength line buf'
     win'
       | col == lenCurrLine = moveCursor (-1, 0) (buf' ^. bufferLines) win
       | otherwise = win
@@ -239,4 +235,4 @@ insertNewline s =
     |> stateWindow %~ moveCursor (0, 1) (buf' ^. bufferLines)
   where
     loc = s ^. stateWindow . winCursorLocation
-    buf' = bufInsertNewLine loc (getCurrentBuffer s)
+    buf' = Buffer.insertNewLine loc (getCurrentBuffer s)

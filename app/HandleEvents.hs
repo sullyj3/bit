@@ -121,7 +121,6 @@ handleInsertModeCmd =
 data ShouldQuit = Quit | Continue
   deriving (Show)
 
-
 setStatusMessage :: Text -> App ()
 setStatusMessage t = stateStatusMessage .= Just t
 
@@ -225,4 +224,4 @@ openFile path =
     -- TODO figure out how to check that it's the right IO exception, from memory
     -- I think we may have to resort to string comparison
     orCreateNewBuffer :: IOException -> IO Buffer
-    orCreateNewBuffer _ = pure $ newEmptyBuffer {_bufferFilePath = Just path}
+    orCreateNewBuffer _ = pure $ Buffer.empty {_bufferFilePath = Just path}

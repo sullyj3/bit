@@ -42,35 +42,35 @@ data Buffer = Buffer
 
 makeLenses ''Buffer
 
-newEmptyBuffer :: Buffer
-newEmptyBuffer =
+empty :: Buffer
+empty =
   Buffer
     { _bufferFilePath = Nothing,
       _bufferLines = Seq.singleton mempty,
       _bufferChanged = False
     }
 
-bufferLineCount :: Buffer -> Int
-bufferLineCount Buffer {_bufferLines} = Seq.length _bufferLines
+lineCount :: Buffer -> Int
+lineCount Buffer {_bufferLines} = Seq.length _bufferLines
 
-bufGetLineLength :: Int -> Buffer -> Int
-bufGetLineLength line Buffer {_bufferLines} =
+lineLength :: Int -> Buffer -> Int
+lineLength line Buffer {_bufferLines} =
   T.length $ Seq.index _bufferLines line
 
-bufEdit ::
+edit ::
   (BufferContents -> BufferContents) ->
   (Buffer -> Buffer)
-bufEdit f buf =
+edit f buf =
   buf
     |> bufferLines %~ f
     |> bufferChanged .~ True
 
-bufInsertChar :: Char -> CursorLocation -> Buffer -> Buffer
-bufInsertChar c (CursorLocation col line) =
-  bufEdit $ Seq.adjust' (insertChar c col) line
+insertChar :: Char -> CursorLocation -> Buffer -> Buffer
+insertChar c (CursorLocation col line) =
+  edit $ Seq.adjust' (insertCharTxt c col) line
 
-bufInsertNewLine :: CursorLocation -> Buffer -> Buffer
-bufInsertNewLine (CursorLocation col line) = bufEdit go
+insertNewLine :: CursorLocation -> Buffer -> Buffer
+insertNewLine (CursorLocation col line) = edit go
   where
     go :: BufferContents -> BufferContents
     go bufLines =
@@ -82,19 +82,20 @@ bufInsertNewLine (CursorLocation col line) = bufEdit go
         (l, r) = T.splitAt col theLine
         (top, bottom) = Seq.splitAt line bufLines
 
-bufDeleteChar :: CursorLocation -> Buffer -> Buffer
-bufDeleteChar (CursorLocation col line) =
-  bufEdit $ Seq.adjust' (deleteChar col) line
+deleteChar :: CursorLocation -> Buffer -> Buffer
+deleteChar (CursorLocation col line) =
+  edit $ Seq.adjust' (deleteCharTxt col) line
 
+-- todo: move text manipulation functions into their own module
 -- TODO probably inefficient, especially for long lines
-insertChar :: Char -> Int -> Text -> Text
-insertChar c i txt = l <> T.singleton c <> r
+insertCharTxt :: Char -> Int -> Text -> Text
+insertCharTxt c i txt = l <> T.singleton c <> r
   where
     (l, r) = T.splitAt i txt
 
 -- does nothing if i ∉ [0, T.length txt)
-deleteChar :: Int -> Text -> Text
-deleteChar i txt
+deleteCharTxt :: Int -> Text -> Text
+deleteCharTxt i txt
   | i < 0 = txt
   | i >= T.length txt = txt
   | otherwise = let (l, r) = T.splitAt i txt in l <> T.tail r
