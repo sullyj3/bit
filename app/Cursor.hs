@@ -78,7 +78,8 @@ clampCursorToBufferHeight = do
 clampCursorToCurrentLineWidth :: CursorMovement ()
 clampCursorToCurrentLineWidth = do
   width <- widthCurrLine
-  locCol %= clamp 0 (width -1)
+  -- we clamp to width rather than width-1 to allow appending to the line
+  locCol %= clamp 0 width
 
 clampCursorToViewPort :: Int -> Rect -> CursorMovement ()
 clampCursorToViewPort topLine rect = do

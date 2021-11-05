@@ -60,28 +60,49 @@ viewMainWindow s
         emptyHeight
         (text emptyLineAttr $ L.fromStrict $ T.replicate winWidth " ")
 
-viewLine :: Maybe Int -> Int -> Int -> Text -> Image
+viewLine :: Maybe Int -- Just the cursor column if the cursor is on the current line, and Nothing otherwise
+         -> Int
+         -> Int
+         -> Text
+         -> Image
 viewLine mCursorX windowWidth _lineNumber l = case mCursorX of
-  Just cursorX ->
-    let (left, right) = T.splitAt cursorX l
-     in horizCat case T.uncons right of
-          Just (cursorChar, right') ->
-            [ text' currLineAttr left,
-              char cursorAttr cursorChar,
-              text' currLineAttr right',
-              text' currLineAttr (T.replicate remainingWidth " ")
-            ]
-          -- assuming cursorX < length l, we only get nothing if the line is empty
-          Nothing -> [char cursorAttr ' ']
-  Nothing -> text' defAttr l
+  Just cursorX -> if T.null l
+    then horizCat [ cursorImg ' ', 
+                    emptySpace (windowWidth-1) currLineAttr
+                  ]
+    else let (left, right) = T.splitAt cursorX l
+         in horizCat case T.uncons right of
+              Just (cursorChar, right') ->
+                [ text' currLineAttr left,
+                  cursorImg cursorChar,
+                  text' currLineAttr right',
+                  emptySpace (windowWidth - T.length l) currLineAttr
+                ]
+              -- if we get Nothing, right is empty, so the cursor is at the end
+              -- of the line
+              Nothing ->
+                [ text' currLineAttr left,
+                  cursorImg ' ',
+                  -- 1 less emptySpace for the cursor after the line
+                  emptySpace (windowWidth - T.length l - 1) currLineAttr
+                ]
+  Nothing -> horizCat [ text' defAttr l,
+                        emptySpace (windowWidth - T.length l) defAttr
+                      ]
   where
+    cursorImg :: Char -> Image
+    cursorImg = char cursorAttr
+
+    emptySpace :: Int -> Attr -> Image
+    emptySpace width attr = text' attr $ T.replicate width " "
+
     currLineColor :: Color
     currLineColor = blue
 
     currLineAttr = defAttr `withBackColor` currLineColor
     cursorAttr = defAttr `withBackColor` black `withForeColor` currLineColor
 
-    remainingWidth = windowWidth - T.length l
+    
 
 viewAppState :: AppState -> Picture
 viewAppState appState@AppState {..} = picForLayers [bottomLine, mainWindow]
