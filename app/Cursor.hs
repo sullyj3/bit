@@ -27,14 +27,20 @@ import Lens.Micro.Platform (use, (%=), (.=))
 import Misc
 import Relude
 
-newtype CursorMovement a = CursorMovement {runCursorMovement :: ReaderT BufferContents (State BufferLocation) a}
-  deriving (Functor, Applicative, Monad, MonadState BufferLocation, MonadReader BufferContents)
 
-instance Semigroup (CursorMovement ()) where
-  a <> b = a *> b
+-- data CursorState = CursorState {
+--   cursorPreferredCol :: Int
+--   cursorPosition :: BufferLocation
+-- }
 
-instance Monoid (CursorMovement ()) where
-  mempty = pure ()
+-- TODO - Reader should include current mode to allow differing cursor 
+-- behaviour between modes, and the State will need to be a CursorState, to 
+-- allow us to store current preferred horizontal position, independently of 
+-- actual horizontal position
+newtype CursorMovement a = CursorMovement
+  { runCursorMovement :: ReaderT BufferContents (State BufferLocation) a }
+  deriving (Functor, Applicative, Monad,
+              MonadState BufferLocation, MonadReader BufferContents)
 
 cursorMovementDone :: CursorMovement ()
 cursorMovementDone = pure ()

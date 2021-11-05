@@ -2,12 +2,12 @@
 ## In progress
 
 ## todo
-- [ ] fix bugs around beginning and end of lines
 - [ ] creating a new buffer
 - [ ] add error message for saving when the buffer has no path yet
 - [ ] I, a, A, o, O
 - [ ] selection
 - [ ] line numbers
+- [ ] When moving the cursor vertically, it should remember it's "preferred horizontal position", even when moving across shorter lines. 
 - [ ] fuzzy finding of files
 - [ ] ensure files are terminated with a newline when saving
 - [ ] command line
