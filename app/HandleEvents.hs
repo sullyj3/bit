@@ -59,22 +59,20 @@ askVty = ask
 -- Events --
 ------------
 
-data CmdType = NormalModeCmd | InsertModeCmd | AnyModeCmd
-
-data Command a where
-  CmdScroll :: Int -> Command 'NormalModeCmd
-  CmdEnterInsertMode :: Command 'NormalModeCmd
-  CmdQuit :: Command 'NormalModeCmd
-  CmdOpenFile :: FilePath -> Command 'NormalModeCmd
-  CmdMoveCursor :: CursorMovement () -> Command 'NormalModeCmd
-  CmdEnterNormalMode :: Command 'InsertModeCmd
-  CmdInsertChar :: Char -> Command 'InsertModeCmd
-  CmdBackspace :: Command 'InsertModeCmd
-  CmdInsertNewline :: Command 'InsertModeCmd
-  CmdDel :: Command 'InsertModeCmd
-  CmdSave :: Command 'NormalModeCmd
-  CmdSaveAs :: Command 'NormalModeCmd
-  CmdNewBuffer :: Command 'NormalModeCmd
+data Command where
+  CmdScroll :: Int -> Command
+  CmdEnterInsertMode :: Command
+  CmdQuit :: Command
+  CmdOpenFile :: FilePath -> Command
+  CmdMoveCursor :: CursorMovement () -> Command
+  CmdEnterNormalMode :: Command
+  CmdInsertChar :: Char -> Command
+  CmdBackspace :: Command
+  CmdInsertNewline :: Command
+  CmdDel :: Command
+  CmdSave :: Command
+  CmdSaveAs :: Command
+  CmdNewBuffer :: Command
 
 newBufferID :: MonadState AppState m => m BufferID
 newBufferID = do
@@ -82,8 +80,8 @@ newBufferID = do
   stateNextBufID %= succ
   pure bid
 
-handleNormalModeCmd :: Command 'NormalModeCmd -> App ShouldQuit
-handleNormalModeCmd cmd = do
+handleCmd :: Command -> App ShouldQuit
+handleCmd cmd = do
   currBuf <- getCurrentBuffer <$> get
   let bufLines = _bufferLines currBuf
   case cmd of
@@ -115,6 +113,22 @@ handleNormalModeCmd cmd = do
     CmdNewBuffer -> do
       error "Creating new buffers not yet implemented"
 
+    CmdEnterNormalMode -> do
+      stateMode .= NormalMode
+      pure Continue
+    CmdInsertChar c -> do
+      modify $ AppState.insertChar c
+      pure Continue
+    CmdBackspace -> do
+      modify backspace
+      pure Continue
+    CmdDel -> do
+      modify del
+      pure Continue
+    CmdInsertNewline -> do
+      modify insertNewline
+      pure Continue
+
 openSaveAsDialog :: App ShouldQuit
 openSaveAsDialog = do
   Buffer {_bufferFilePath = currPath} <- getCurrentBuffer <$> get
@@ -134,17 +148,6 @@ saveContentsToPath path bufContents = do
 rectFullScreen :: (Int, Int) -> Rect
 rectFullScreen (w, h) = Rect (0, 0) (w, h -1)
 
--- handleNormalModeCmd must be able to do IO (eg for opening files).
--- At least for now, lets see if we can get away with handling insert mode
--- commands purely.
-handleInsertModeCmd :: MonadState AppState m => Command 'InsertModeCmd -> m ShouldQuit
-handleInsertModeCmd =
-  (Continue <$) . \case
-    CmdEnterNormalMode -> stateMode .= NormalMode
-    CmdInsertChar c -> modify $ AppState.insertChar c
-    CmdBackspace -> modify backspace
-    CmdInsertNewline -> modify insertNewline
-    CmdDel -> modify del
 
 data ShouldQuit = Quit | Continue
   deriving (Show)
@@ -218,7 +221,7 @@ handleEventWindow :: Event -> App ShouldQuit
 handleEventWindow ev =
   use stateMode >>= \case
     NormalMode -> do
-      let cmds :: [Command 'NormalModeCmd]
+      let cmds :: [Command]
           cmds = case ev of
             EvKey (KChar c) [] -> case c of
               'Q' -> [CmdQuit]
@@ -226,12 +229,7 @@ handleEventWindow ev =
               'I' -> [CmdMoveCursor Cursor.moveStartOfLine, CmdEnterInsertMode]
               'a' -> [CmdMoveCursor $ Cursor.moveRelative (1, 0), CmdEnterInsertMode]
               'A' -> [CmdMoveCursor Cursor.moveEndOfLine, CmdEnterInsertMode]
-              -- TODO: how to do this? currently have a CmdInsertNewline, but it's an insert mode command. 
-              -- A bad decision in retrospect. Possibly even the distinction between normal and insert commands
-              -- was bad
-              -- Will try the following:
-              --  - eliminate the type parameter on Command
-              --  - merge handleNormalModeCmd with handleInsertModeCmd
+              -- TODO:
               'o' -> []
               'O' -> []
               'h' -> [CmdMoveCursor $ Cursor.moveRelative (-1, 0)]
@@ -249,11 +247,11 @@ handleEventWindow ev =
             EvKey _ _ -> []
             -- ignore all other events
             _ -> []
-      shouldQuits <- traverse handleNormalModeCmd cmds
+      shouldQuits <- traverse handleCmd cmds
       pure $ mconcat shouldQuits
     InsertMode -> maybe
       (pure Continue)
-      handleInsertModeCmd
+      handleCmd
       case ev of
         EvKey KEsc [] -> Just CmdEnterNormalMode
         EvKey (KChar c) [] -> Just $ CmdInsertChar c
