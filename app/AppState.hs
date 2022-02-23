@@ -210,6 +210,10 @@ insertNewline s =
     loc = s ^. stateWindow . winCursorLocation
     buf' = Buffer.insertNewLine loc (getCurrentBuffer s)
 
+-- Possibly openNewLine and openNewLineAbove should not move the cursor, moving
+-- should be left to separate Command.
+-- either way, openNewLineAbove certainly still needs a clampCursor, since the 
+-- line containing the cursor becomes empty
 openNewLine :: AppState -> AppState
 openNewLine s =
   s |> modifyCurrentBuffer (const buf')
