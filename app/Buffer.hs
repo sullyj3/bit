@@ -95,18 +95,15 @@ insertChar :: Char -> BufferLocation -> Buffer -> Buffer
 insertChar c (BufferLocation col line) =
   edit $ coerce $ Seq.adjust' (T.insertChar c col) line
 
+-- inserts a newline at the position of the cursor, splitting the current line
 insertNewLine :: BufferLocation -> Buffer -> Buffer
-insertNewLine (BufferLocation col line) = edit go
-  where
-    go :: BufferContents -> BufferContents
-    go (BufferContents bufLines) =
-      -- first element of bottom is the current line, we drop it and replace with
-      -- the two halves of the split line
-      BufferContents $ top <> Seq.fromList [l, r] <> Seq.drop 1 bottom
-      where
-        theLine = bufLines `Seq.index` line
-        (l, r) = T.splitAt col theLine
-        (top, bottom) = Seq.splitAt line bufLines
+insertNewLine (BufferLocation col line) = edit \(BufferContents bufLines) ->
+  let
+    theLine = bufLines `Seq.index` line
+    (l, r) = T.splitAt col theLine
+    (top, bottom) = Seq.splitAt line bufLines
+  in
+    BufferContents $ top <> Seq.fromList [l, r] <> Seq.drop 1 bottom
 
 deleteChar :: BufferLocation -> Buffer -> Buffer
 deleteChar (BufferLocation col line) =
