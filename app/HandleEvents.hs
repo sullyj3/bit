@@ -67,8 +67,6 @@ data Command a where
   CmdQuit :: Command 'NormalModeCmd
   CmdOpenFile :: FilePath -> Command 'NormalModeCmd
   -- todo replace usages to use CmdMoveCursor, which should subsume CmdMoveCursorRelative
-  CmdMoveCursorRelative :: (Int, Int) -> Command 'NormalModeCmd
-
   CmdMoveCursor :: CursorMovement () -> Command 'NormalModeCmd
   CmdEnterNormalMode :: Command 'InsertModeCmd
   CmdInsertChar :: Char -> Command 'InsertModeCmd
@@ -90,9 +88,6 @@ handleNormalModeCmd cmd = do
   currBuf <- getCurrentBuffer <$> get
   let bufLines = _bufferLines currBuf
   case cmd of
-    CmdMoveCursorRelative v ->
-      Continue
-        <$ (stateWindow %= moveCursorWin (Cursor.moveRelative v) bufLines)
     CmdMoveCursor movement -> do
       stateWindow %= moveCursorWin movement bufLines
       pure Continue
@@ -230,10 +225,10 @@ handleEventWindow ev =
               'Q' -> [CmdQuit]
               'i' -> [CmdEnterInsertMode]
               'o' -> [CmdOpenFile "app/Main.hs"]
-              'h' -> [CmdMoveCursorRelative (-1, 0)]
-              'j' -> [CmdMoveCursorRelative (0, 1)]
-              'k' -> [CmdMoveCursorRelative (0, -1)]
-              'l' -> [CmdMoveCursorRelative (1, 0)]
+              'h' -> [CmdMoveCursor $ Cursor.moveRelative (-1, 0)]
+              'j' -> [CmdMoveCursor $ Cursor.moveRelative (0, 1)]
+              'k' -> [CmdMoveCursor $ Cursor.moveRelative (0, -1)]
+              'l' -> [CmdMoveCursor $ Cursor.moveRelative (1, 0)]
               'm' -> [CmdScroll 1]
               ',' -> [CmdScroll (-1)]
               's' -> [CmdSave]
