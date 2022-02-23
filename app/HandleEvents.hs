@@ -38,6 +38,7 @@ import AppState
     stateWindow,
     windowFromBufID,
   )
+import Cursor (CursorMovement)
 import Buffer (Buffer (..), BufferContents, BufferID, bufferChanged, bufferFilePath, bufferLines)
 import qualified Buffer
 import qualified Cursor
@@ -65,7 +66,10 @@ data Command a where
   CmdEnterInsertMode :: Command 'NormalModeCmd
   CmdQuit :: Command 'NormalModeCmd
   CmdOpenFile :: FilePath -> Command 'NormalModeCmd
+  -- todo replace usages to use CmdMoveCursor, which should subsume CmdMoveCursorRelative
   CmdMoveCursorRelative :: (Int, Int) -> Command 'NormalModeCmd
+
+  CmdMoveCursor :: CursorMovement () -> Command 'NormalModeCmd
   CmdEnterNormalMode :: Command 'InsertModeCmd
   CmdInsertChar :: Char -> Command 'InsertModeCmd
   CmdBackspace :: Command 'InsertModeCmd
@@ -89,6 +93,9 @@ handleNormalModeCmd cmd = do
     CmdMoveCursorRelative v ->
       Continue
         <$ (stateWindow %= moveCursorWin (Cursor.moveRelative v) bufLines)
+    CmdMoveCursor movement -> do
+      stateWindow %= moveCursorWin movement bufLines
+      pure Continue
     CmdScroll n -> Continue <$ (stateWindow %= scrollWindow n bufLines)
     CmdEnterInsertMode ->
       Continue <$ do
