@@ -62,7 +62,7 @@ moveStartOfLine = locCol .= 0
 moveEndOfLine :: CursorMovement ()
 moveEndOfLine = do
   width <- widthCurrLine
-  locCol .= width - 1
+  locCol .= width
 
 widthCurrLine :: CursorMovement Int
 widthCurrLine = do

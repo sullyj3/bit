@@ -66,7 +66,6 @@ data Command a where
   CmdEnterInsertMode :: Command 'NormalModeCmd
   CmdQuit :: Command 'NormalModeCmd
   CmdOpenFile :: FilePath -> Command 'NormalModeCmd
-  -- todo replace usages to use CmdMoveCursor, which should subsume CmdMoveCursorRelative
   CmdMoveCursor :: CursorMovement () -> Command 'NormalModeCmd
   CmdEnterNormalMode :: Command 'InsertModeCmd
   CmdInsertChar :: Char -> Command 'InsertModeCmd
@@ -224,7 +223,17 @@ handleEventWindow ev =
             EvKey (KChar c) [] -> case c of
               'Q' -> [CmdQuit]
               'i' -> [CmdEnterInsertMode]
-              'o' -> [CmdOpenFile "app/Main.hs"]
+              'I' -> [CmdMoveCursor Cursor.moveStartOfLine, CmdEnterInsertMode]
+              'a' -> [CmdMoveCursor $ Cursor.moveRelative (1, 0), CmdEnterInsertMode]
+              'A' -> [CmdMoveCursor Cursor.moveEndOfLine, CmdEnterInsertMode]
+              -- TODO: how to do this? currently have a CmdInsertNewline, but it's an insert mode command. 
+              -- A bad decision in retrospect. Possibly even the distinction between normal and insert commands
+              -- was bad
+              -- Will try the following:
+              --  - eliminate the type parameter on Command
+              --  - merge handleNormalModeCmd with handleInsertModeCmd
+              'o' -> []
+              'O' -> []
               'h' -> [CmdMoveCursor $ Cursor.moveRelative (-1, 0)]
               'j' -> [CmdMoveCursor $ Cursor.moveRelative (0, 1)]
               'k' -> [CmdMoveCursor $ Cursor.moveRelative (0, -1)]
