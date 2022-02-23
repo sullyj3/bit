@@ -13,6 +13,7 @@
 
 module HandleEvents where
 
+-- TODO probably much of this should be referred to qualified
 import AppState
   ( AppState,
     EditorMode (InsertMode, NormalMode),
@@ -38,6 +39,7 @@ import AppState
     stateWindow,
     windowFromBufID,
   )
+import qualified AppState
 import Cursor (CursorMovement)
 import Buffer (Buffer (..), BufferContents, BufferID, bufferChanged, bufferFilePath, bufferLines)
 import qualified Buffer
@@ -69,6 +71,8 @@ data Command where
   CmdInsertChar :: Char -> Command
   CmdBackspace :: Command
   CmdInsertNewline :: Command
+  CmdOpenNewline :: Command
+  CmdOpenNewlineAbove :: Command
   CmdDel :: Command
   CmdSave :: Command
   CmdSaveAs :: Command
@@ -112,7 +116,14 @@ handleCmd cmd = do
     CmdSaveAs -> openSaveAsDialog
     CmdNewBuffer -> do
       error "Creating new buffers not yet implemented"
-
+    -- 'O'
+    CmdOpenNewlineAbove -> do
+      modify AppState.openNewLineAbove
+      pure Continue
+    -- 'o'
+    CmdOpenNewline -> do
+      modify AppState.openNewLine
+      pure Continue
     CmdEnterNormalMode -> do
       stateMode .= NormalMode
       pure Continue
@@ -125,6 +136,7 @@ handleCmd cmd = do
     CmdDel -> do
       modify del
       pure Continue
+    -- For enter in insert mode (splits current line)
     CmdInsertNewline -> do
       modify insertNewline
       pure Continue
@@ -229,9 +241,8 @@ handleEventWindow ev =
               'I' -> [CmdMoveCursor Cursor.moveStartOfLine, CmdEnterInsertMode]
               'a' -> [CmdMoveCursor $ Cursor.moveRelative (1, 0), CmdEnterInsertMode]
               'A' -> [CmdMoveCursor Cursor.moveEndOfLine, CmdEnterInsertMode]
-              -- TODO:
-              'o' -> []
-              'O' -> []
+              'o' -> [CmdOpenNewline, CmdEnterInsertMode]
+              'O' -> [CmdOpenNewlineAbove, CmdEnterInsertMode]
               'h' -> [CmdMoveCursor $ Cursor.moveRelative (-1, 0)]
               'j' -> [CmdMoveCursor $ Cursor.moveRelative (0, 1)]
               'k' -> [CmdMoveCursor $ Cursor.moveRelative (0, -1)]

@@ -27,6 +27,7 @@ module Buffer
     lineLength,
     insertChar,
     insertNewLine,
+    openNewLine,
     deleteChar,
     openFile,
     mkInitialBuffer,
@@ -37,11 +38,11 @@ where
 
 import Control.Exception (IOException, catch)
 import qualified Data.Sequence as Seq
-import qualified Data.Text as T
+import qualified Data.Text as Text
 import Flow ((|>))
 import Lens.Micro.Platform (makeLenses, (%~), (.~))
 import Relude
-import qualified TextUtils as T
+import qualified TextUtils
 
 data BufferLocation = BufferLocation
   { _locCol :: Int,
@@ -81,8 +82,10 @@ lineCount = Seq.length . getBufferContents
 
 lineLength :: Int -> BufferContents -> Int
 lineLength line contents =
-  T.length $ Seq.index (getBufferContents contents) line
+  Text.length $ Seq.index (getBufferContents contents) line
 
+-- TODO: refactor this to be (Seq Text -> Seq Text) -> Buffer -> Buffer
+-- this function is not exported, so this should be fine
 edit ::
   (BufferContents -> BufferContents) ->
   (Buffer -> Buffer)
@@ -93,21 +96,31 @@ edit f buf =
 
 insertChar :: Char -> BufferLocation -> Buffer -> Buffer
 insertChar c (BufferLocation col line) =
-  edit $ coerce $ Seq.adjust' (T.insertChar c col) line
+  edit $ coerce $ Seq.adjust' (TextUtils.insertChar c col) line
 
 -- inserts a newline at the position of the cursor, splitting the current line
 insertNewLine :: BufferLocation -> Buffer -> Buffer
-insertNewLine (BufferLocation col line) = edit \(BufferContents bufLines) ->
-  let
-    theLine = bufLines `Seq.index` line
-    (l, r) = T.splitAt col theLine
-    (top, bottom) = Seq.splitAt line bufLines
-  in
-    BufferContents $ top <> Seq.fromList [l, r] <> Seq.drop 1 bottom
+insertNewLine (BufferLocation col line) = 
+  edit \(BufferContents bufLines) ->
+    let
+      theLine = bufLines `Seq.index` line
+      (l, r) = Text.splitAt col theLine
+      (top, bottom) = Seq.splitAt line bufLines
+    in
+      BufferContents $ top <> Seq.fromList [l, r] <> Seq.drop 1 bottom
+
+-- the line at the given index moves down. 
+-- examples:
+-- - to open a new line at the start of the buffer, the line index will be 0
+-- - to open a line before the current line, give the current line
+-- - to open a line after the current line, give the current line + 1
+openNewLine :: Int -> Buffer -> Buffer
+openNewLine line = edit \(BufferContents bufLines) ->
+  BufferContents $ Seq.insertAt line Text.empty bufLines
 
 deleteChar :: BufferLocation -> Buffer -> Buffer
 deleteChar (BufferLocation col line) =
-  edit $ coerce $ Seq.adjust' (T.deleteChar col) line
+  edit $ coerce $ Seq.adjust' (TextUtils.deleteChar col) line
 
 --------
 -- IO --

@@ -209,3 +209,22 @@ insertNewline s =
   where
     loc = s ^. stateWindow . winCursorLocation
     buf' = Buffer.insertNewLine loc (getCurrentBuffer s)
+
+openNewLine :: AppState -> AppState
+openNewLine s =
+  s |> modifyCurrentBuffer (const buf')
+    |> stateWindow %~ moveCursorWin (Cursor.moveRelative (0, 1)) (buf' ^. bufferLines)
+  where
+    BufferLocation _col line = s ^. stateWindow . winCursorLocation
+    buf' = Buffer.openNewLine (line+1) (getCurrentBuffer s)
+
+openNewLineAbove :: AppState -> AppState
+openNewLineAbove s =
+  s |> modifyCurrentBuffer (const buf')
+    -- cursor vertical position remains the same, since the current line is 
+    -- simply moved down. We just need to ensure that the cursor is clamped 
+    -- horizontally
+    |> stateWindow %~ clampCursor (buf' ^. bufferLines)
+  where
+    BufferLocation _col line = s ^. stateWindow . winCursorLocation
+    buf' = Buffer.openNewLine line (getCurrentBuffer s)
