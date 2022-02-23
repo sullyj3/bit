@@ -2,7 +2,6 @@
 ## In progress
 
 ## todo
-- [ ] I, a, A, o, O
 - [ ] selection
 - [ ] line numbers
 - [ ] When moving the cursor vertically, it should remember it's "preferred horizontal position", even when moving across shorter lines. 
