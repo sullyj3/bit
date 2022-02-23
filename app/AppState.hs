@@ -9,10 +9,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
+-- TODO: explicit exports, so I know which functions are implementation details
 module AppState where
 
 import Buffer (Buffer (..), BufferContents, BufferID (..), BufferLocation (..), bufferLines)
 import qualified Buffer
+import Cursor (CursorMovement)
 import qualified Cursor
 import Data.Map.NonEmpty (NEMap)
 import qualified Data.Map.NonEmpty as NEMap
@@ -54,12 +56,12 @@ windowFromBufID rect buf showStartMsg =
     }
 
 -- Scrolls the viewPoint to keep the cursor in view if necessary
-moveCursorWin :: (Int, Int) -> BufferContents -> Window -> Window
-moveCursorWin (dx, dy) bufContents win@Window {_winCursorLocation} =
+moveCursorWin :: CursorMovement () -> BufferContents -> Window -> Window
+moveCursorWin movement bufContents win@Window {_winCursorLocation} =
   scrollViewportToCursor $ win {_winCursorLocation = newCursorLocation}
   where
     newCursorLocation =
-      Cursor.moveCursor bufContents (Cursor.moveRelative (dx, dy)) _winCursorLocation
+      Cursor.moveCursor bufContents movement _winCursorLocation
 
 scrollViewportToCursor :: Window -> Window
 scrollViewportToCursor win@Window {..} =
@@ -169,7 +171,7 @@ insertChar c s =
     cursorLoc = s ^. stateWindow . winCursorLocation
     buf' = Buffer.insertChar c cursorLoc (getCurrentBuffer s)
     -- then move the cursor
-    win' = moveCursorWin (1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
+    win' = moveCursorWin (Cursor.moveRelative (1, 0)) (buf' ^. bufferLines) (s ^. stateWindow)
 
 -- TODO consider case where we're deleting the last character in the line
 backspace :: AppState -> AppState
@@ -181,7 +183,7 @@ backspace s =
     BufferLocation col line = s ^. stateWindow . winCursorLocation
     buf' = Buffer.deleteChar (BufferLocation (col -1) line) (getCurrentBuffer s)
     -- then move the cursor
-    win' = moveCursorWin (-1, 0) (buf' ^. bufferLines) (s ^. stateWindow)
+    win' = moveCursorWin (Cursor.moveRelative (-1, 0)) (buf' ^. bufferLines) (s ^. stateWindow)
 
 -- TODO consider case where we're deleting the last character in the line
 -- delete the character at the cursor. If we were on the last character,
@@ -197,13 +199,13 @@ del s =
     win = s ^. stateWindow
     lenCurrLine = Buffer.lineLength line $ buf' ^. bufferLines
     win'
-      | col == lenCurrLine = moveCursorWin (-1, 0) (buf' ^. bufferLines) win
+      | col == lenCurrLine = moveCursorWin (Cursor.moveRelative (-1, 0)) (buf' ^. bufferLines) win
       | otherwise = win
 
 insertNewline :: AppState -> AppState
 insertNewline s =
   s |> modifyCurrentBuffer (const buf')
-    |> stateWindow %~ moveCursorWin (0, 1) (buf' ^. bufferLines)
+    |> stateWindow %~ moveCursorWin (Cursor.moveRelative (0, 1)) (buf' ^. bufferLines)
   where
     loc = s ^. stateWindow . winCursorLocation
     buf' = Buffer.insertNewLine loc (getCurrentBuffer s)

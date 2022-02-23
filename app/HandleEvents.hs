@@ -40,6 +40,7 @@ import AppState
   )
 import Buffer (Buffer (..), BufferContents, BufferID, bufferChanged, bufferFilePath, bufferLines)
 import qualified Buffer
+import qualified Cursor
 import Control.Monad.RWS.Strict (RWST)
 import qualified Data.Text as T
 import Flow
@@ -87,7 +88,7 @@ handleNormalModeCmd cmd = do
   case cmd of
     CmdMoveCursorRelative v ->
       Continue
-        <$ (stateWindow %= moveCursorWin v bufLines)
+        <$ (stateWindow %= moveCursorWin (Cursor.moveRelative v) bufLines)
     CmdScroll n -> Continue <$ (stateWindow %= scrollWindow n bufLines)
     CmdEnterInsertMode ->
       Continue <$ do
