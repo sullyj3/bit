@@ -2,8 +2,6 @@
 ## In progress
 
 ## todo
-- [ ] creating a new buffer
-- [ ] add error message for saving when the buffer has no path yet
 - [ ] I, a, A, o, O
 - [ ] selection
 - [ ] line numbers

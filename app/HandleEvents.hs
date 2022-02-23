@@ -147,6 +147,15 @@ handleInsertModeCmd =
 data ShouldQuit = Quit | Continue
   deriving (Show)
 
+-- Any occurrence of Quit means we should quit, and overrides all continues
+instance Semigroup ShouldQuit where
+  Continue <> Continue = Continue
+  _ <> _ = Quit
+
+-- if nothing happened, we should continue
+instance Monoid ShouldQuit where
+  mempty = Continue
+
 setStatusMessage :: Text -> App ()
 setStatusMessage t = stateStatusMessage .= Just t
 
@@ -201,29 +210,35 @@ handleEventInputWidget iw@InputWidget {..} ev = case ev of
     pure Continue
   _ -> pure Continue
 
+  
+
 handleEventWindow :: Event -> App ShouldQuit
 handleEventWindow ev =
   use stateMode >>= \case
-    NormalMode -> maybe (pure Continue) handleNormalModeCmd case ev of
-      EvKey (KChar c) [] -> case c of
-        'Q' -> Just CmdQuit
-        'i' -> Just CmdEnterInsertMode
-        'o' -> Just $ CmdOpenFile "app/Main.hs"
-        'h' -> Just $ CmdMoveCursorRelative (-1, 0)
-        'j' -> Just $ CmdMoveCursorRelative (0, 1)
-        'k' -> Just $ CmdMoveCursorRelative (0, -1)
-        'l' -> Just $ CmdMoveCursorRelative (1, 0)
-        'm' -> Just $ CmdScroll 1
-        ',' -> Just $ CmdScroll (-1)
-        's' -> Just CmdSave
-        'S' -> Just CmdSaveAs
-        'B' -> Just CmdNewBuffer
-        -- ignore all other chars
-        _ -> Nothing
-      -- ignore all other keys
-      EvKey _ _ -> Nothing
-      -- ignore all other events
-      _ -> Nothing
+    NormalMode -> do
+      let cmds :: [Command 'NormalModeCmd]
+          cmds = case ev of
+            EvKey (KChar c) [] -> case c of
+              'Q' -> [CmdQuit]
+              'i' -> [CmdEnterInsertMode]
+              'o' -> [CmdOpenFile "app/Main.hs"]
+              'h' -> [CmdMoveCursorRelative (-1, 0)]
+              'j' -> [CmdMoveCursorRelative (0, 1)]
+              'k' -> [CmdMoveCursorRelative (0, -1)]
+              'l' -> [CmdMoveCursorRelative (1, 0)]
+              'm' -> [CmdScroll 1]
+              ',' -> [CmdScroll (-1)]
+              's' -> [CmdSave]
+              'S' -> [CmdSaveAs]
+              'B' -> [CmdNewBuffer]
+              -- ignore all other chars
+              _ -> []
+            -- ignore all other keys
+            EvKey _ _ -> []
+            -- ignore all other events
+            _ -> []
+      shouldQuits <- traverse handleNormalModeCmd cmds
+      pure $ mconcat shouldQuits
     InsertMode -> maybe
       (pure Continue)
       handleInsertModeCmd
